@@ -5,7 +5,7 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-const GRAVITY = 0.5, MAX_SPEED = 4, JUMP = 11;
+const GRAVITY = 0.5, JUMP = 11;
 const level = LEVELS[0];
 
 const player = { x:0, y:0, w:24, h:24, vx:0, vy:0, onGround:false };
@@ -38,6 +38,7 @@ function newAttempt() {
     framesSinceRelease = 0; wasMoving = false;
     resetAttempt();
     closePanel();
+    hideReveal();
     renderPanel(liveSet);
     respawn();
 }
@@ -76,7 +77,8 @@ function update() {
     player.vx += dir * acceleration();
     if (dir === 0) player.vx *= friction();
     if (Math.abs(player.vx) < 0.08) player.vx = 0;
-    player.vx = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, player.vx));
+    const cap = maxSpeed();
+    player.vx = Math.max(-cap, Math.min(cap, player.vx));
 
     player.x += player.vx;
     for (const p of level.platforms) {             // snap flush, don't rewind
@@ -161,7 +163,7 @@ function draw() {
     ctx.fillText(String(moves), 16, 25);
     ctx.fillStyle = "#9aa3b2"; ctx.font = "12px system-ui, sans-serif";
     ctx.fillText("moves", 16 + ctx.measureText(String(moves)).width + 14, 25);
-    ctx.fillText(liveSet.length + " of 7 still possible", 130, 25);
+    ctx.fillText(liveSet.length + " of 8 still possible", 130, 25);
     ctx.fillStyle = "#6f7889";
     ctx.fillText("← → move    ↑ jump    C call it    R retry    N new rule", 330, 25);
 
