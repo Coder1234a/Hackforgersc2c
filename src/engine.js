@@ -41,6 +41,7 @@ function nextLevel() {
 function newAttempt() {
     level = LEVELS[levelIndex];
     activeRule = rollRule(level.safeRules);
+    rollWash();
     liveSet = ALL_RULES.slice();
     moves = 0; won = false; called = false; score = 0;
     framesSinceRelease = 0; wasMoving = false;
@@ -144,48 +145,66 @@ function submitCall(ruleId) {
     showReveal(ruleId, activeRule, wasRight, score, getSufficiency(), callMove);
 }
 
-function rounded(x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);         ctx.arcTo(x, y, x + w, y, r);
-    ctx.fill();
+let tick = 0;              // frames since load. Only the scenery reads it.
+
+// Nothing in here decides anything - it reads the arena and the player and
+// hands both to art.js. Note there is no camera transform: the platform
+// coordinates in levels.js are screen coordinates, so what you see is
+// exactly what you collide with.
+// Six washes that mean nothing on purpose. One gets picked per attempt
+// and laid over whatever theme the arena uses. The player sees the
+// world shift the moment a new rule is rolled - they just can't read
+// WHICH rule from it, which is the whole point.
+const ATTEMPT_WASHES = ["#4E6764","#56626C","#626B58","#6F6073","#7C6870","#8A7A6C"];
+let attemptWash = ATTEMPT_WASHES[0];
+
+function rollWash() {
+    attemptWash = ATTEMPT_WASHES[Math.floor(Math.random() * ATTEMPT_WASHES.length)];
 }
 
 function draw() {
-    // Everything outside the arena is void. Keeps the eye on the chamber
-    // instead of a big empty slab of colour.
-    ctx.fillStyle = "#12141a"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const t = themeOf(level);
+    const geo = readArena(level);
+    const w = canvas.width, h = canvas.height;
+    const spawnMid = level.spawn.x + player.w / 2;
 
-    let top = Infinity, bot = -Infinity;
-    for (const p of level.platforms) { top = Math.min(top, p.y); bot = Math.max(bot, p.y + p.h); }
+    setTick(tick);
+    paintBackdrop(ctx, w, h, geo.horizon, t);
+    paintTerrain(ctx, geo, w, h, t);
+    paintWorldEdge(ctx, geo, w, h);
 
-    // Nudge the whole chamber to sit in the middle of the frame. Purely
-    // cosmetic - collisions still use the real coordinates.
+    // A tuft either side of the arena, planted on whatever is under it.
+    const tufts = [{ x: level.exit.x + level.exit.w + 16, y: level.exit.y },
+                   { x: level.spawn.x + 170,             y: level.spawn.y }];
+    for (const s of tufts) {
+        if (s.x < 10 || s.x > w - 10) continue;
+        const sy = surfaceUnder(level, s.x, s.y);
+        if (sy < h) paintTuft(ctx, s.x, sy, t);
+    }
+
+    // The pipe sits just left of the spawn rather than on top of it - the
+    // design has them overlapping, but a 24px block parked inside a 34px
+    // pipe hides both. Side by side still reads as "you came out of there".
+    const pipeMid = spawnMid - 24;
+    paintPipe(ctx, pipeMid, surfaceUnder(level, pipeMid, level.spawn.y), t);
+    paintExit(ctx, level.exit, won, t);
+    paintPlayer(ctx, player, surfaceUnder(level, player.x + player.w / 2, player.y));
+
+    // The attempt wash. "color" only shifts hue and saturation, it leaves
+    // brightness alone - so the whole frame visibly changes mood on every
+    // new roll without a single edge or platform getting harder to see.
     ctx.save();
-    ctx.translate(0, Math.round((canvas.height + 38 - (bot - top)) / 2 - top));
-
-    ctx.fillStyle = "#5B6B68"; ctx.fillRect(0, top, canvas.width, bot - top);
-
-    ctx.save(); ctx.beginPath(); ctx.rect(0, top, canvas.width, bot - top); ctx.clip();
-    ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.lineWidth = 1;   // faint grid
-    for (let x = 0; x <= canvas.width; x += 20) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
-    for (let y = 0; y <= canvas.height; y += 20) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
+    ctx.globalAlpha = 0.35;
+    ctx.globalCompositeOperation = "color";
+    ctx.fillStyle = attemptWash;
+    ctx.fillRect(0, 0, w, h);
     ctx.restore();
 
-    ctx.fillStyle = "#242830";
-    for (const p of level.platforms) rounded(p.x, p.y, p.w, p.h, 4);
-
-    ctx.fillStyle = won ? "#b6f5c8" : "#7fd39a";
-    rounded(level.exit.x, level.exit.y, level.exit.w, level.exit.h, 5);
-
-    ctx.fillStyle = "#f5c542";
-    rounded(player.x, player.y, player.w, player.h, 6);
-
-    ctx.restore();
+    paintScanlines(ctx, w, h);
 
     // HUD strip along the top, so text never sits on the play area
-    ctx.fillStyle = "rgba(16,18,22,0.82)"; ctx.fillRect(0, 0, canvas.width, 38);
+    ctx.fillStyle = "rgba(11,14,19,0.86)"; ctx.fillRect(0, 0, w, 38);
+    ctx.fillStyle = "rgba(201,231,92,0.5)"; ctx.fillRect(0, 37, w, 1);
     ctx.fillStyle = "#f5c542"; ctx.font = "bold 15px system-ui, sans-serif";
     ctx.fillText(String(moves), 16, 25);
     ctx.fillStyle = "#9aa3b2"; ctx.font = "12px system-ui, sans-serif";
@@ -197,16 +216,16 @@ function draw() {
     ctx.fillText("← → ↑ move    C call    R retry    N new rule    L next arena", 400, 25);
 
     if (won && !called) {
-        ctx.fillStyle = "rgba(12,14,18,0.86)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "rgba(12,14,18,0.86)"; ctx.fillRect(0, 0, w, h);
         ctx.textAlign = "center";
         ctx.fillStyle = "#e8eaf0"; ctx.font = "600 15px system-ui, sans-serif";
-        ctx.fillText("You reached the exit in " + moves + " moves", canvas.width/2, 170);
+        ctx.fillText("You reached the exit in " + moves + " moves", w/2, 170);
         ctx.fillStyle = "#f5c542"; ctx.font = "bold 40px system-ui, sans-serif";
-        ctx.fillText("So what was the rule?", canvas.width/2, 226);
+        ctx.fillText("So what was the rule?", w/2, 226);
         ctx.fillStyle = "#9aa3b2"; ctx.font = "14px system-ui, sans-serif";
-        ctx.fillText("Press C to call it  ·  N for a new rule", canvas.width/2, 268);
+        ctx.fillText("Press C to call it  ·  N for a new rule", w/2, 268);
         ctx.textAlign = "left";
     }
 }
 
-function loop() { update(); draw(); requestAnimationFrame(loop); }
+function loop() { tick++; update(); draw(); requestAnimationFrame(loop); }

@@ -5,7 +5,7 @@
 
 const LEVELS = [
     {
-        id: 1, name: "First Light",
+        id: 1, name: "First Light", theme: "meadow",
         safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM"],
         spawn: { x: 100, y: 340 },
         exit:  { x: 720, y: 340, w: 30, h: 40 },
@@ -17,7 +17,7 @@ const LEVELS = [
         hasCeiling: true, hasProjectile: false
     },
     {
-        id: 2, name: "Tighter",
+        id: 2, name: "Tighter", theme: "cavern",
         safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM"],
         spawn: { x: 100, y: 340 },
         exit:  { x: 480, y: 340, w: 30, h: 40 },
@@ -29,7 +29,7 @@ const LEVELS = [
         hasCeiling: true, hasProjectile: false
     },
     {
-        id: 3, name: "First Projectile",
+        id: 3, name: "First Projectile", theme: "meadow",
         safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM"],
         spawn: { x: 100, y: 340 },
         exit:  { x: 440, y: 340, w: 30, h: 40 },
@@ -41,7 +41,7 @@ const LEVELS = [
         hasCeiling: true, hasProjectile: true
     },
     {
-        id: 4, name: "Head-height Projectile",
+        id: 4, name: "Head-height Projectile", theme: "cavern",
         safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM"],
         spawn: { x: 100, y: 340 },
         exit:  { x: 520, y: 340, w: 30, h: 40 },
@@ -55,7 +55,7 @@ const LEVELS = [
     {
         // No NO_JUMP here - the pit needs a jump. No MOMENTUM either,
         // you'd skid straight into it with no way to stop.
-        id: 5, name: "Split Floor",
+        id: 5, name: "Split Floor", theme: "meadow",
         safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS"],
         spawn: { x: 100, y: 340 },
         exit:  { x: 620, y: 340, w: 30, h: 40 },
@@ -69,7 +69,7 @@ const LEVELS = [
     },
     {
         // The step up to the raised floor needs a jump, so NO_JUMP is out.
-        id: 6, name: "Two Levels",
+        id: 6, name: "Two Levels", theme: "cavern",
         safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","MOMENTUM"],
         spawn: { x: 100, y: 340 },
         exit:  { x: 680, y: 280, w: 30, h: 40 },
