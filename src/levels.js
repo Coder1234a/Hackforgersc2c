@@ -4,7 +4,7 @@ const LEVELS = [
     {
         id: 1,
         name: "First Light",
-        safeRules: ["REVERSE_GRAVITY", "INVERTED_CONTROLS", "MOMENTUM"],
+        safeRules: ["REVERSE_GRAVITY", "INVERTED_CONTROLS", "NO_JUMP", "MOMENTUM"],
         spawn: { x: 100, y: 340 },
         exit:  { x: 720, y: 340, w: 30, h: 40 },
         platforms: [
