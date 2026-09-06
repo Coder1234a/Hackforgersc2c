@@ -1,6 +1,9 @@
-// detect.js — Aarish. Turns what just happened into an event ID,
-// or null when the evidence honestly doesn't tell us anything.
-// Reminder: canvas y grows downward, so smaller y = went UP.
+// detect.js - Aarish
+// takes what just happened and gives back an event id, or null when the
+// evidence honestly doesn't say anything either way.
+//
+// fair warning: canvas y grows DOWNWARD. smaller y = higher up. got me
+// twice before it stuck.
 
 function detectHorizontal(inputDir, xBefore, xAfter) {
     if (xAfter === xBefore) return null;

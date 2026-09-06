@@ -1,12 +1,13 @@
-// art.js — every pixel the game paints lives in here. These functions take
-// coordinates and draw. They never read or write game state, which is why
-// the arena data, the rules and the look can each change without the other
-// two noticing.
+// art.js - every pixel the game paints lives in here.
 //
-// Two arenas' worth of look, straight off the design file: a bright meadow
-// and a lava cavern. They share one piece of grammar — every surface you
-// can stand on gets a bright yellow-green lip — and that one line is what
-// makes a ledge readable at a glance in either theme.
+// these take coords and draw. that's it. none of them read or write game
+// state, which is the reason the arena data, the rules and the look can
+// each change without the other two even noticing.
+//
+// two themes off the design file: a bright meadow and a lava cavern. they
+// share one bit of grammar - anything you can stand on gets a bright
+// yellow-green lip. that one rule is why a ledge reads instantly in a green
+// field or a black cave without the player relearning anything.
 
 const THEMES = {
     meadow: {
@@ -36,8 +37,8 @@ const THEMES = {
 
 function themeOf(level) { return THEMES[level.theme] || THEMES.meadow; }
 
-// The frame counter, parked here so the flames and the clouds can move
-// without every paint function taking a time argument it mostly ignores.
+// frame counter, parked here so flames + clouds can move without every
+// paint fn taking a time arg it mostly ignores
 let ART_TICK = 0;
 function setTick(t) { ART_TICK = t; }
 
@@ -225,7 +226,7 @@ function paintBackdrop(g, w, h, horizonY, t) {
         }
         // Hills rise out of the horizon into the sky; the field then covers
         // everything from the horizon down, so the joins never show.
-        // Furthest first, and furthest is also tallest — that is the only
+        // Furthest first, and furthest is also tallest - that is the only
         // depth cue here, so the order matters more than the colours do.
         paintRidge(b, bw, hz + 1, 54 / d, 0.9, 2.1, t.ridge);
         paintRidge(b, bw, hz + 1, 34 / d, 0.7, 4.4, t.hillFar);
@@ -252,7 +253,7 @@ function paintBackdrop(g, w, h, horizonY, t) {
  * ------------------------------------------------------------------ */
 
 // The bright lip. Every standable surface in both themes gets this, and
-// nothing else does — it is the one thing a player can always trust.
+// nothing else does - it is the one thing a player can always trust.
 // flip = true when the surface faces downward, i.e. a ceiling.
 function paintLip(g, x, y, w, t, flip) {
     const dir = flip ? -1 : 1;
@@ -324,7 +325,7 @@ function paintTerrain(g, geo, w, h, t) {
     }
 
     // Ledges: cap on the collision box, plank apron hanging below it. The
-    // apron is decoration and hangs past the box on purpose — the bright
+    // apron is decoration and hangs past the box on purpose - the bright
     // lip is the line you actually land on.
     for (const p of geo.ledges) {
         const apron = 12, ay = p.y + p.h - 2;

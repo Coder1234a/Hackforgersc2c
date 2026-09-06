@@ -1,9 +1,10 @@
-// simulator.js — Aarish. Plays the game against itself, thousands of
-// times, so we can say how many moves identification ACTUALLY takes
-// instead of guessing. Pure logic, no engine needed.
+// simulator.js - Aarish
+// plays the game against itself a few thousand times so we can say how
+// many moves this ACTUALLY takes instead of guessing. pure logic, doesn't
+// need the engine running.
 
-// What each probe shows you, for each rule. Read a column: under
-// MOMENTUM everything looks normal until you let go of the key.
+// what each probe shows you under each rule. read a row: under MOMENTUM
+// everything looks totally normal until you let go of the key.
 const OUTCOME = {
     NORMAL:              { MOVE:"MOVED_SAME_DIRECTION",     RELEASE:"STOPPED_PROMPTLY", JUMP:"JUMP_ROSE",    LAND:"LANDED_STABLE",     BULLET:"BULLET_HURT",   TIMER:"TIMER_WALL_CLOCK" },
     REVERSE_GRAVITY:     { MOVE:"MOVED_SAME_DIRECTION",     RELEASE:"STOPPED_PROMPTLY", JUMP:"JUMP_FELL",    LAND:"LANDED_STABLE",     BULLET:"BULLET_HURT",   TIMER:"TIMER_WALL_CLOCK" },
@@ -17,8 +18,9 @@ const OUTCOME = {
 
 const PROBES = ["MOVE", "RELEASE", "JUMP", "LAND", "BULLET", "TIMER"];
 
-// Fisher-Yates. Every ordering equally likely - that's the point, we're
-// modelling lots of different players, not one tidy one.
+// fisher-yates. every ordering equally likely, which is the point - we're
+// modelling loads of different players, not one tidy one who always probes
+// in the same order.
 function shuffle(arr) {
     const a = arr.slice();
     for (let i = a.length - 1; i > 0; i--) {
@@ -28,8 +30,8 @@ function shuffle(arr) {
     return a;
 }
 
-// One player, one attempt. They try probes in their own order until
-// only one rule is left standing. Returns how many that took.
+// one player, one go. tries probes in their own order till one rule is
+// left standing. returns how many that took.
 function simulateAttempt(trueRule) {
     if (!OUTCOME[trueRule]) throw new Error("No outcome map for rule: " + trueRule);
 
@@ -39,7 +41,7 @@ function simulateAttempt(trueRule) {
     let jumped = false;
 
     for (const probe of order) {
-        // You can't observe a landing without jumping first.
+        // can't watch yourself land if you never jumped
         if (probe === "LAND" && !jumped) continue;
         if (probe === "JUMP") jumped = true;
 
@@ -48,7 +50,7 @@ function simulateAttempt(trueRule) {
         if (isSufficient(live)) return moves;
     }
 
-    // Second pass, in case LAND got skipped the first time round.
+    // second pass in case LAND got skipped first time round
     for (const probe of order) {
         if (probe !== "LAND") continue;
         moves++;
@@ -78,7 +80,7 @@ function simulateRule(trueRule, attempts) {
     };
 }
 
-// The whole thing. Prints a table you can paste straight into the pitch.
+// the whole lot. prints a table you can paste straight into the pitch.
 function runSimulation(attemptsPerRule) {
     const n = attemptsPerRule || 1000;
     const rows = [];

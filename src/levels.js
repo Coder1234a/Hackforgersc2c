@@ -1,7 +1,8 @@
-// levels.js — the arenas, as plain data. No logic in here at all.
-// Grid is 20px a square. safeRules is the list this arena can survive:
-// the roll only ever draws from it, so a rule can't make a level
-// impossible to finish.
+// levels.js - the arenas, plain data, zero logic.
+//
+// grid is 20px a square. safeRules = what this arena can survive; the roll
+// only ever draws from that list, so a rule can't hand you a level you
+// physically can't finish.
 
 const LEVELS = [
     {
@@ -53,8 +54,8 @@ const LEVELS = [
         hasCeiling: true, hasProjectile: true
     },
     {
-        // No NO_JUMP here - the pit needs a jump. No MOMENTUM either,
-        // you'd skid straight into it with no way to stop.
+        // no NO_JUMP, the pit needs a jump. no MOMENTUM either, you'd
+        // skid straight in with no way to stop.
         id: 5, name: "Split Floor", theme: "meadow",
         safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS"],
         spawn: { x: 100, y: 340 },
@@ -68,7 +69,7 @@ const LEVELS = [
         hasCeiling: true, hasProjectile: true
     },
     {
-        // The step up to the raised floor needs a jump, so NO_JUMP is out.
+        // step up to the raised floor needs a jump, so NO_JUMP's out
         id: 6, name: "Two Levels", theme: "cavern",
         safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","MOMENTUM"],
         spawn: { x: 100, y: 340 },

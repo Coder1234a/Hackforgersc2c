@@ -1,6 +1,7 @@
-// scoring.js — Vidhu. Turns "when did you call it" into a number.
+// scoring.js - Vidhu
+// turns "when did you call it" into a number.
 
-let sufficiencyMove = null;   // the move where it became knowable
+let sufficiencyMove = null;   // move no. where it became knowable
 
 function recordSufficiency(moveCount) {
     if (sufficiencyMove === null) sufficiencyMove = moveCount;
@@ -8,8 +9,8 @@ function recordSufficiency(moveCount) {
 function resetAttempt() { sufficiencyMove = null; }
 function getSufficiency() { return sufficiencyMove; }
 
-// The whole idea in one function. Calling early is a guess even if you
-// happen to be right - so it pays 10, not 100.
+// the whole idea, one function. call early and it's a guess even if you
+// got lucky, so it pays 10 instead of 100.
 function gapScore(sufficiency, callMove, wasCorrect) {
     if (sufficiency === null || sufficiency === undefined) return wasCorrect ? 10 : 0;
     if (callMove < sufficiency) return wasCorrect ? 10 : 0;

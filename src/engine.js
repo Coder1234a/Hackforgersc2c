@@ -1,6 +1,7 @@
-// engine.js — canvas, loop, player, collision, evidence, win check.
-// Heads up: on a canvas y grows DOWNWARD. Smaller y = higher up.
-// Everyone gets caught by that once, so it's worth repeating.
+// engine.js - canvas, loop, player, collision, evidence, win check.
+//
+// y grows DOWNWARD on a canvas. smaller y = higher up the screen. says it
+// in detect.js too but it's caught all of us at least once.
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -16,8 +17,8 @@ let liveSet = [];         // rules still possible
 let won = false, called = false, wasRight = false, score = 0, callMove = 0;
 let framesSinceRelease = 0, wasMoving = false;
 
-// Something happened worth reporting - narrow the list, and note the
-// moment it became knowable.
+// something worth reporting happened. narrow the list, and note the exact
+// moment it became knowable - that's what the score is built on.
 function logEvent(eventId) {
     if (!eventId || called) return;
     const before = liveSet.length;
@@ -31,7 +32,7 @@ function respawn() {
     player.vx = 0; player.vy = 0; won = false;
 }
 
-// Fresh go, brand new secret rule, everything back to square one.
+// fresh go, new secret rule, everything back to square one
 function nextLevel() {
     levelIndex = (levelIndex + 1) % LEVELS.length;
     level = LEVELS[levelIndex];
@@ -52,7 +53,7 @@ function newAttempt() {
     respawn();
 }
 
-// Only these three count as a move. Pressing D or shift isn't an action.
+// only these 3 count as a move. pressing D or shift isn't an action.
 const GAME_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp"];
 
 const keys = {};
@@ -78,7 +79,7 @@ function update() {
     const g = gravityDirection();
     const xBefore = player.x, yBefore = player.y;
 
-    // --- sideways ---
+    // sideways
     let raw = 0;
     if (keys["ArrowLeft"])  raw = -1;
     if (keys["ArrowRight"]) raw = 1;
@@ -101,7 +102,7 @@ function update() {
 
     if (raw !== 0 && player.x !== xBefore) logEvent(detectHorizontal(raw, xBefore, player.x));
 
-    // --- letting go: did we stop, or keep sliding? ---
+    // let go of the key - did we stop, or keep sliding?
     if (raw === 0 && wasMoving) framesSinceRelease++;
     else if (raw !== 0) { framesSinceRelease = 0; wasMoving = true; }
     if (wasMoving && raw === 0) {
@@ -109,7 +110,7 @@ function update() {
         else if (framesSinceRelease > 6 && Math.abs(player.vx) > 0) { logEvent("KEPT_SLIDING"); wasMoving = false; }
     }
 
-    // --- up and down ---
+    // up and down
     const wasOnGround = player.onGround;
     let jumped = false;
     if (keys["ArrowUp"] && player.onGround) {
@@ -134,7 +135,7 @@ function update() {
     if (overlaps(player, level.exit)) won = true;
 }
 
-// Called by ui.js when the player picks a rule off the list.
+// ui.js calls this when they pick a rule off the list
 function submitCall(ruleId) {
     called = true;
     callMove = moves;
@@ -145,16 +146,12 @@ function submitCall(ruleId) {
     showReveal(ruleId, activeRule, wasRight, score, getSufficiency(), callMove);
 }
 
-let tick = 0;              // frames since load. Only the scenery reads it.
+let tick = 0;              // frames since load, only the scenery reads it
 
-// Nothing in here decides anything - it reads the arena and the player and
-// hands both to art.js. Note there is no camera transform: the platform
-// coordinates in levels.js are screen coordinates, so what you see is
-// exactly what you collide with.
-// Six washes that mean nothing on purpose. One gets picked per attempt
-// and laid over whatever theme the arena uses. The player sees the
-// world shift the moment a new rule is rolled - they just can't read
-// WHICH rule from it, which is the whole point.
+// six washes that mean nothing, on purpose. one gets picked per attempt and
+// laid over whatever theme the arena's using. you SEE the world shift the
+// moment a new rule rolls, you just can't read WHICH rule from it. that's
+// the point - the shift is a signal, not an answer.
 const ATTEMPT_WASHES = ["#4E6764","#56626C","#626B58","#6F6073","#7C6870","#8A7A6C"];
 let attemptWash = ATTEMPT_WASHES[0];
 
@@ -162,6 +159,9 @@ function rollWash() {
     attemptWash = ATTEMPT_WASHES[Math.floor(Math.random() * ATTEMPT_WASHES.length)];
 }
 
+// draw decides nothing. reads the arena + the player and hands both to
+// art.js. no camera transform either, so the coords in levels.js are screen
+// coords - what you see is exactly what you collide with.
 function draw() {
     const t = themeOf(level);
     const geo = readArena(level);
@@ -173,7 +173,7 @@ function draw() {
     paintTerrain(ctx, geo, w, h, t);
     paintWorldEdge(ctx, geo, w, h);
 
-    // A tuft either side of the arena, planted on whatever is under it.
+    // a tuft either side, planted on whatever's underneath
     const tufts = [{ x: level.exit.x + level.exit.w + 16, y: level.exit.y },
                    { x: level.spawn.x + 170,             y: level.spawn.y }];
     for (const s of tufts) {
@@ -182,17 +182,18 @@ function draw() {
         if (sy < h) paintTuft(ctx, s.x, sy, t);
     }
 
-    // The pipe sits just left of the spawn rather than on top of it - the
-    // design has them overlapping, but a 24px block parked inside a 34px
-    // pipe hides both. Side by side still reads as "you came out of there".
+    // pipe sits just LEFT of spawn, not on it. design has them overlapping
+    // but a 24px block parked inside a 34px pipe hides both. side by side
+    // still reads as "you came out of there".
     const pipeMid = spawnMid - 24;
     paintPipe(ctx, pipeMid, surfaceUnder(level, pipeMid, level.spawn.y), t);
     paintExit(ctx, level.exit, won, t);
     paintPlayer(ctx, player, surfaceUnder(level, player.x + player.w / 2, player.y));
 
-    // The attempt wash. "color" only shifts hue and saturation, it leaves
-    // brightness alone - so the whole frame visibly changes mood on every
-    // new roll without a single edge or platform getting harder to see.
+    // the attempt wash. "color" only touches hue + saturation and leaves
+    // brightness alone, so the frame changes mood without a single platform
+    // edge getting harder to see. tried overlay and soft-light first, both
+    // too subtle to notice.
     ctx.save();
     ctx.globalAlpha = 0.35;
     ctx.globalCompositeOperation = "color";
@@ -202,7 +203,7 @@ function draw() {
 
     paintScanlines(ctx, w, h);
 
-    // HUD strip along the top, so text never sits on the play area
+    // HUD strip up top so text never sits on the play area
     ctx.fillStyle = "rgba(11,14,19,0.86)"; ctx.fillRect(0, 0, w, 38);
     ctx.fillStyle = "rgba(201,231,92,0.5)"; ctx.fillRect(0, 37, w, 1);
     ctx.fillStyle = "#f5c542"; ctx.font = "bold 15px system-ui, sans-serif";

@@ -1,6 +1,7 @@
-// ui.js — the call panel and the reveal. Both live in the DOM so they
-// look like real screens, and so Shruti can restyle them without ever
-// touching game code.
+// ui.js - the call panel + the reveal screen.
+//
+// both are DOM, not canvas. means they actually look like screens, and
+// Shruti can restyle them without touching a line of game code.
 
 const RULES = [
     { id:"NORMAL",              label:"Nothing — normal physics", colour:"#7C8798" },
@@ -26,16 +27,16 @@ function closePanel() { $panel.hidden = true; picked = null; }
 function openPanel()  { $panel.hidden = false; picked = null; renderPanel(liveSet); }
 function togglePanel(){ $panel.hidden ? openPanel() : closePanel(); }
 
-// Redraw the eight rows. Dead ones are dimmed AND struck through -
-// never colour on its own, plenty of people can't separate the hues.
-let showHints = false;   // off by default - the player does the thinking
+// redraw the 8 rows. dimmed AND struck through, never colour on its own -
+// about 1 in 12 blokes can't separate those hues.
+let showHints = false;   // off by default. player does the thinking.
 
 function toggleHints() { showHints = !showHints; renderPanel(liveSet); }
 
-// Every row is always pickable. That's deliberate: if the game crossed
-// off the wrong answers for you, you couldn't be wrong, and a score you
-// can't lose isn't worth anything. Hints (H) only ever mark what your
-// own moves have already ruled out.
+// every row stays pickable, always. deliberate - if the game crossed off
+// the wrong answers you literally couldn't be wrong, and a score you can't
+// lose is worth nothing. hints (H) only ever mark what your OWN moves have
+// already ruled out.
 function renderPanel(live) {
     if (!$rows) return;
     $count.textContent = showHints ? live.length : RULES.length;
@@ -63,8 +64,8 @@ function pick(id) {
     renderPanel(liveSet);
 }
 
-// Grab what they picked BEFORE closing, because closing clears it.
-// This exact ordering is what stopped the button working earlier.
+// grab the pick BEFORE closing, closing wipes it. these two lines the
+// wrong way round is what broke the button for an hour.
 function commit() {
     if (!picked) return;
     const choice = picked;
@@ -80,7 +81,7 @@ document.addEventListener("keydown", function (e) {
     if (e.key === "Enter") commit();
 });
 
-// The payoff. First time the player ever sees the rule's own colour.
+// the payoff. first time they see the rule's own colour.
 function showReveal(guess, truth, right, score, sufficiency, callMove) {
     const truthRule = RULES.find(function (r) { return r.id === truth; });
     const guessRule = RULES.find(function (r) { return r.id === guess; });

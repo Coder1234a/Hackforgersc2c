@@ -1,11 +1,12 @@
-// runs.js — every finished attempt gets saved here. Right now it powers
-// the "your best" line on screen; it's also the shape a leaderboard
-// would read from later, so nothing has to be rewritten to add one.
+// runs.js
+// every finished attempt lands here. right now it just feeds the "your
+// best" line in the HUD, but it's already the shape a leaderboard would
+// read from, so adding one later isn't a rewrite.
 
 const RUNS_KEY = "misrule.runs.v1";
 
-// Reads the saved history. Wrapped in try/catch because a browser in
-// private mode will happily throw when you touch localStorage.
+// try/catch cos a private-mode browser throws the second you touch
+// localStorage. don't remove it.
 function loadRuns() {
     try { return JSON.parse(localStorage.getItem(RUNS_KEY)) || []; }
     catch (e) { return []; }
@@ -15,8 +16,8 @@ function saveRuns(runs) {
     try { localStorage.setItem(RUNS_KEY, JSON.stringify(runs)); } catch (e) {}
 }
 
-// One finished attempt. Keep every field a leaderboard would want,
-// even the ones nothing reads yet - backfilling old runs is painful.
+// one finished attempt. saving every field a leaderboard might want even
+// though nothing reads half of them yet - backfilling old runs is grim.
 function recordRun(entry) {
     const runs = loadRuns();
     runs.push({
@@ -34,15 +35,15 @@ function recordRun(entry) {
     return runs.length;
 }
 
-// Fewest moves anyone's ever taken to correctly name this rule.
+// fewest moves anyone's got this rule in
 function bestFor(ruleId) {
     const wins = loadRuns().filter(function (r) { return r.correct && r.rule === ruleId; });
     if (wins.length === 0) return null;
     return Math.min.apply(null, wins.map(function (r) { return r.moves; }));
 }
 
-// Top scores, highest first. This is the leaderboard, it just happens
-// to only have one player in it so far.
+// top scores, highest first. this IS the leaderboard, it's just got one
+// player in it so far.
 function leaderboard(limit) {
     return loadRuns()
         .filter(function (r) { return r.correct; })
