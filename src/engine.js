@@ -6,7 +6,8 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 const GRAVITY = 0.5, JUMP = 11;
-const level = LEVELS[0];
+let levelIndex = 0;
+let level = LEVELS[levelIndex];
 
 const player = { x:0, y:0, w:24, h:24, vx:0, vy:0, onGround:false };
 
@@ -31,7 +32,14 @@ function respawn() {
 }
 
 // Fresh go, brand new secret rule, everything back to square one.
+function nextLevel() {
+    levelIndex = (levelIndex + 1) % LEVELS.length;
+    level = LEVELS[levelIndex];
+    newAttempt();
+}
+
 function newAttempt() {
+    level = LEVELS[levelIndex];
     activeRule = rollRule(level.safeRules);
     liveSet = ALL_RULES.slice();
     moves = 0; won = false; called = false; score = 0;
@@ -49,6 +57,7 @@ const GAME_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp"];
 const keys = {};
 document.addEventListener("keydown", function (e) {
     if (e.key === "n" || e.key === "N") { newAttempt(); return; }
+    if (e.key === "l" || e.key === "L") { nextLevel(); return; }
     if (e.key === "r" || e.key === "R") { respawn(); return; }
     if (e.key === "c" || e.key === "C") { if (!called) togglePanel(); return; }
     if (e.key === "Escape") { closePanel(); return; }
@@ -130,6 +139,8 @@ function submitCall(ruleId) {
     callMove = moves;
     wasRight = (ruleId === activeRule);
     score = gapScore(getSufficiency(), callMove, wasRight);
+    recordRun({ levelId: level.id, rule: activeRule, guess: ruleId, correct: wasRight,
+                moves: callMove, sufficiency: getSufficiency(), score: score });
     showReveal(ruleId, activeRule, wasRight, score, getSufficiency(), callMove);
 }
 
@@ -142,11 +153,25 @@ function rounded(x, y, w, h, r) {
 }
 
 function draw() {
-    ctx.fillStyle = "#5B6B68"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Everything outside the arena is void. Keeps the eye on the chamber
+    // instead of a big empty slab of colour.
+    ctx.fillStyle = "#12141a"; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = "rgba(255,255,255,0.045)"; ctx.lineWidth = 1;   // faint grid
+    let top = Infinity, bot = -Infinity;
+    for (const p of level.platforms) { top = Math.min(top, p.y); bot = Math.max(bot, p.y + p.h); }
+
+    // Nudge the whole chamber to sit in the middle of the frame. Purely
+    // cosmetic - collisions still use the real coordinates.
+    ctx.save();
+    ctx.translate(0, Math.round((canvas.height + 38 - (bot - top)) / 2 - top));
+
+    ctx.fillStyle = "#5B6B68"; ctx.fillRect(0, top, canvas.width, bot - top);
+
+    ctx.save(); ctx.beginPath(); ctx.rect(0, top, canvas.width, bot - top); ctx.clip();
+    ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.lineWidth = 1;   // faint grid
     for (let x = 0; x <= canvas.width; x += 20) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
     for (let y = 0; y <= canvas.height; y += 20) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
+    ctx.restore();
 
     ctx.fillStyle = "#242830";
     for (const p of level.platforms) rounded(p.x, p.y, p.w, p.h, 4);
@@ -157,15 +182,19 @@ function draw() {
     ctx.fillStyle = "#f5c542";
     rounded(player.x, player.y, player.w, player.h, 6);
 
+    ctx.restore();
+
     // HUD strip along the top, so text never sits on the play area
     ctx.fillStyle = "rgba(16,18,22,0.82)"; ctx.fillRect(0, 0, canvas.width, 38);
     ctx.fillStyle = "#f5c542"; ctx.font = "bold 15px system-ui, sans-serif";
     ctx.fillText(String(moves), 16, 25);
     ctx.fillStyle = "#9aa3b2"; ctx.font = "12px system-ui, sans-serif";
     ctx.fillText("moves", 16 + ctx.measureText(String(moves)).width + 14, 25);
-    ctx.fillText(liveSet.length + " of 8 still possible", 130, 25);
+    ctx.fillText(level.name, 130, 25);
+    const best = bestFor(activeRule);
+    if (best !== null) ctx.fillText("best for this rule: " + best, 130 + ctx.measureText(level.name).width + 24, 25);
     ctx.fillStyle = "#6f7889";
-    ctx.fillText("← → move    ↑ jump    C call it    R retry    N new rule", 330, 25);
+    ctx.fillText("← → ↑ move    C call    R retry    N new rule    L next arena", 400, 25);
 
     if (won && !called) {
         ctx.fillStyle = "rgba(12,14,18,0.86)"; ctx.fillRect(0, 0, canvas.width, canvas.height);

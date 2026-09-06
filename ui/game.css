@@ -71,3 +71,10 @@ canvas{display:block;width:100%;height:auto}
 #rows{max-width:430px}
 .name{flex:0 1 auto}
 .tag{margin-left:auto}
+
+/* hint mode: a soft mark, not a locked door. row stays clickable. */
+.row.hinted{opacity:.5}
+.row.hinted .name{text-decoration:line-through;text-decoration-thickness:1.5px}
+.row.hinted .chip{filter:grayscale(1)}
+.row.hinted .tag{font-size:9.5px}
+#hintline{margin-left:14px;color:#6f7889;font-size:12px}

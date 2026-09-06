@@ -28,26 +28,37 @@ function togglePanel(){ $panel.hidden ? openPanel() : closePanel(); }
 
 // Redraw the eight rows. Dead ones are dimmed AND struck through -
 // never colour on its own, plenty of people can't separate the hues.
+let showHints = false;   // off by default - the player does the thinking
+
+function toggleHints() { showHints = !showHints; renderPanel(liveSet); }
+
+// Every row is always pickable. That's deliberate: if the game crossed
+// off the wrong answers for you, you couldn't be wrong, and a score you
+// can't lose isn't worth anything. Hints (H) only ever mark what your
+// own moves have already ruled out.
 function renderPanel(live) {
     if (!$rows) return;
-    $count.textContent = live.length;
+    $count.textContent = showHints ? live.length : RULES.length;
     $total.textContent = RULES.length;
+    document.getElementById("hintline").textContent =
+        showHints ? "showing what your moves rule out — H to hide"
+                  : "press H if you want a hand";
     $rows.innerHTML = "";
     RULES.forEach(function (rule, i) {
         const alive = live.includes(rule.id);
+        const faded = showHints && !alive;
         const row = document.createElement("li");
-        row.className = "row " + (alive ? "live" : "out") + (picked === rule.id ? " picked" : "");
+        row.className = "row live" + (faded ? " hinted" : "") + (picked === rule.id ? " picked" : "");
         row.innerHTML = '<span class="key">' + (i+1) + '</span>' +
                         '<span class="chip" style="background:' + rule.colour + '"></span>' +
                         '<span class="name">' + rule.label + '</span>' +
-                        (alive ? '' : '<span class="tag">ruled out</span>');
-        if (alive) row.onclick = function () { pick(rule.id); };
+                        (faded ? '<span class="tag">your moves rule this out</span>' : '');
+        row.onclick = function () { pick(rule.id); };
         $rows.appendChild(row);
     });
 }
 
 function pick(id) {
-    if (!liveSet.includes(id)) return;
     picked = id;
     renderPanel(liveSet);
 }
@@ -65,6 +76,7 @@ document.addEventListener("keydown", function (e) {
     if (!panelOpen()) return;
     const n = parseInt(e.key, 10);
     if (n >= 1 && n <= RULES.length) pick(RULES[n-1].id);
+    if (e.key === "h" || e.key === "H") toggleHints();
     if (e.key === "Enter") commit();
 });
 
