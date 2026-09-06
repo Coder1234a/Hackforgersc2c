@@ -1,13 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Misrule</title>
+<meta charset="UTF-8">
+<title>Misrule</title>
+<link rel="stylesheet" href="ui/game.css">
 </head>
-<body style="margin:0;background:#14161c">
-  <canvas id="game" width="800" height="450"></canvas>
-  <script src="src/levels.js"></script>
-  <script src="src/rules.js"></script>
-  <script src="src/engine.js"></script>
+<body>
+
+<div class="stage">
+  <h1 class="brand">Misrule<span>every attempt hides a different law of physics</span></h1>
+  <div class="frame">
+    <canvas id="game" width="800" height="450"></canvas>
+
+    <div id="panel" hidden>
+      <h2>What's the rule?</h2>
+      <p class="sub"><b id="count">7</b> of 7 still possible</p>
+      <ul id="rows"></ul>
+      <p class="foot">1&ndash;7 to pick &middot; ENTER to call it &middot; ESC to close</p>
+    </div>
+
+    <div id="reveal" hidden></div>
+  </div>
+</div>
+
+<script src="src/evidence.js"></script>
+<script src="src/detect.js"></script>
+<script src="src/scoring.js"></script>
+<script src="src/levels.js"></script>
+<script src="src/rules.js"></script>
+<script src="src/ui.js"></script>
+<script src="src/engine.js"></script>
+<script>newAttempt(); loop();</script>
 </body>
 </html>
