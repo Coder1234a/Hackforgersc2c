@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Call the rule</title>
+<link rel="stylesheet" href="call.css">
+</head>
+<body>
+
+<div class="panel">
+  <h1>What's the rule?</h1>
+  <p class="count"><b id="liveCount">7</b> of 7 still possible</p>
+  <ul class="rules" id="rules"></ul>
+  <p class="hint">1&ndash;7 to pick &middot; ENTER to confirm &middot; ESC to close</p>
+</div>
+
+<script>
+// The seven rules. The ID is what the rest of the game uses; the label is
+// what the player reads; the colour is only a memory aid beside the name.
+const RULES = [
+  { id: "REVERSE_GRAVITY",     label: "Reverse Gravity",     colour: "var(--r-gravity)"  },
+  { id: "INVERTED_CONTROLS",   label: "Inverted Controls",   colour: "var(--r-controls)" },
+  { id: "NO_JUMP",             label: "No Jumping",          colour: "var(--r-jump)"     },
+  { id: "MOMENTUM",            label: "Momentum Matters",    colour: "var(--r-momentum)" },
+  { id: "BULLETS_PUSH",        label: "Bullets Push You",    colour: "var(--r-bullets)"  },
+  { id: "SHIFTING_PLATFORMS",  label: "Shifting Platforms",  colour: "var(--r-shift)"    },
+  { id: "MOVEMENT_COSTS_TIME", label: "Movement Costs Time", colour: "var(--r-time)"     }
+];
+
+let liveSet = RULES.map(r => r.id);   // everything is possible until evidence lands
+let selected = null;
+
+// Builds the seven rows. Called once at startup and again every time the
+// live set shrinks, so the greying-out happens by redrawing the list.
+function renderPanel() {
+  const list = document.getElementById("rules");
+  list.innerHTML = "";
+  RULES.forEach(function (rule, i) {
+    const alive = liveSet.includes(rule.id);
+    const row = document.createElement("li");
+    row.className = "rule " + (alive ? "live" : "eliminated") +
+                    (selected === rule.id ? " selected" : "");
+    row.innerHTML = '<span class="key">' + (i + 1) + '</span>' +
+                    '<span class="chip" style="background:' + rule.colour + '"></span>' +
+                    '<span class="name">' + rule.label + '</span>';
+    if (alive) row.onclick = function () { pick(rule.id); };
+    list.appendChild(row);
+  });
+  document.getElementById("liveCount").textContent = liveSet.length;
+}
+
+// Selects a rule, but only if it hasn't already been ruled out.
+function pick(ruleId) {
+  if (!liveSet.includes(ruleId)) return;
+  selected = ruleId;
+  renderPanel();
+}
+
+// Removes rules from the live set. The game calls this with the list that
+// evidence.js says are eliminated; the panel just redraws.
+function eliminate(ruleIds) {
+  liveSet = liveSet.filter(function (id) { return !ruleIds.includes(id); });
+  if (selected && !liveSet.includes(selected)) selected = null;
+  renderPanel();
+}
+
+// Number keys pick a rule; ENTER confirms; ESC clears the selection.
+document.addEventListener("keydown", function (e) {
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= 7) pick(RULES[n - 1].id);
+  if (e.key === "Enter" && selected) console.log("CALLED:", selected);
+  if (e.key === "Escape") { selected = null; renderPanel(); }
+});
+
+renderPanel();
+
+// DEMO ONLY — delete these two lines once the game is wired up. They fake
+// evidence arriving so you can see rows grey out.
+setTimeout(function(){ eliminate(["INVERTED_CONTROLS", "MOMENTUM"]); }, 1200);
+setTimeout(function(){ eliminate(["NO_JUMP", "SHIFTING_PLATFORMS"]); }, 2600);
+</script>
+
+</body>
+</html>
