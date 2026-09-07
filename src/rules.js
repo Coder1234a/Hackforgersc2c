@@ -55,17 +55,18 @@ function platformsShift() {
     return activeRule === "SHIFTING_PLATFORMS";
 }
 
-// the clock. normally it burns 1 unit a second and ignores your feet.
-// under MOVEMENT_COSTS_TIME it ignores the clock and burns per step.
+// the clock. counts UP now, not down, because a leaderboard wants
+// "identified in 8.4s" not "had 22 left". normally it ticks with the wall
+// clock and ignores your feet.
 //
-// the two rates are tuned to look almost identical while you're moving
-// about normally, on purpose. the only way to separate them is to do the
-// one thing the game never asks you to do: stand completely still and
-// watch. that's the hardest probe in the pool and it should be.
-const CLOCK_PER_SEC  = 1.0;
-const CLOCK_PER_STEP = 0.0042;  // matches 1.00/sec at a normal walking pace
+// under MOVEMENT_COSTS_TIME it ignores the wall entirely and only advances
+// when you move. tuned so the two run at nearly the same rate while you're
+// walking about, on purpose. the only way to separate them is to stand
+// dead still and watch the hand. hardest probe in the pool, and it should
+// be - it's the one thing a platformer never asks you to do.
+const CLOCK_PER_PIXEL = 1 / 240;   // ~1s per second at a normal walking pace
 
-function clockDrain(dtSeconds, pixelsMoved) {
-    if (activeRule === "MOVEMENT_COSTS_TIME") return pixelsMoved * CLOCK_PER_STEP;
-    return dtSeconds * CLOCK_PER_SEC;
+function clockAdvance(dtSeconds, pixelsMoved) {
+    if (activeRule === "MOVEMENT_COSTS_TIME") return pixelsMoved * CLOCK_PER_PIXEL;
+    return dtSeconds;
 }

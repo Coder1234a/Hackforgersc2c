@@ -85,7 +85,7 @@ document.addEventListener("keydown", function (e) {
 });
 
 // the payoff. first time they see the rule's own colour.
-function showReveal(guess, truth, right, score, sufficiency, callMove, best) {
+function showReveal(guess, truth, right, score, sufficiency, callMove, best, secs) {
     const truthRule = RULES.find(function (r) { return r.id === truth; });
     const guessRule = RULES.find(function (r) { return r.id === guess; });
 
@@ -116,9 +116,12 @@ function showReveal(guess, truth, right, score, sufficiency, callMove, best) {
         body +
         '<div class="score">' + score + '</div><div class="slabel">points</div>' +
         '<p class="msg">' + msg + '</p>' +
-        (best !== null && best !== undefined
-            ? '<p class="hint">best anyone\'s got this rule in: ' + best + ' moves</p>' : '') +
-        '<p class="hint">Press N for a new rule</p></div>';
+        '<div class="stats">' +
+          '<span><b>' + callMove + '</b> moves</span>' +
+          '<span><b>' + (secs === undefined ? "-" : secs) + 's</b> taken</span>' +
+          (best !== null && best !== undefined ? '<span><b>' + best + '</b> your best</span>' : '') +
+        '</div>' +
+        '<p class="hint">N for a new rule  ·  L for the next arena</p></div>';
     $reveal.hidden = false;
 }
 

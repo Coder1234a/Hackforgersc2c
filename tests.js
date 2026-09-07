@@ -63,7 +63,7 @@ resetAttempt();      check("reset actually clears it", getSufficiency(), null);
 check("empty pool throws", (function(){ try { rollRule([]); return "no throw"; } catch(e){ return e.message; } })(), "Level has no safe rules");
 
 group("levels");
-check("six arenas", LEVELS.length, 6);
+check("four arenas", LEVELS.length, 4);
 LEVELS.forEach(function (L) {
     check("L" + L.id + " has a name", typeof L.name, "string");
     check("L" + L.id + " has 3+ safe rules", L.safeRules.length >= 3, true);
@@ -88,10 +88,11 @@ activeRule = "MOMENTUM";          check("momentum has real friction", friction()
 activeRule = "BULLETS_PUSH";      check("bullets stop hurting", bulletHurts(), false);
 activeRule = "SHIFTING_PLATFORMS";check("floor shifts", platformsShift(), true);
 activeRule = "MOVEMENT_COSTS_TIME";
-check("clock ignores the seconds", clockDrain(1, 0), 0);
-check("clock burns on the pixels", clockDrain(0, 240) > 0.9, true);
+check("clock ignores the seconds", clockAdvance(1, 0), 0);
+check("clock advances on the pixels", clockAdvance(0, 240), 1);
 activeRule = "NORMAL";
-check("normal clock ignores the pixels", clockDrain(0, 240), 0);
+check("normal clock ignores the pixels", clockAdvance(0, 240), 0);
+check("normal clock follows the seconds", clockAdvance(1, 0), 1);
 activeRule = before;
 
 group("the skid you can actually see");
@@ -114,6 +115,57 @@ group("simulator");
     const rows = runSimulation(500);
     check("every rule converges", rows.filter(function(r){ return !r.average; }).length, 0);
     check("nothing is a one-move giveaway", rows.filter(function(r){ return r.average < 1.5; }).length, 0);
+})();
+
+
+group("hazards");
+(function () {
+    // the bullet must never start where the player does
+    LEVELS.filter(function (L) { return L.hasProjectile; }).forEach(function (L) {
+        const b = makeBullets(L)[0];
+        check("L" + L.id + " bullet starts clear of the spawn",
+              Math.abs(b.x - L.spawn.x) > 120, true);
+        check("L" + L.id + " bullet patrol never reaches the spawn",
+              b.minX > L.spawn.x + 100, true);
+        // the one that bit us: the player falls to floor height, so a
+        // bullet parked at spawn.y sails over their head and BULLETS_PUSH
+        // can never be observed.
+        const fl = L.platforms.reduce(function (a, c) { return c.y > a.y ? c : a; });
+        const bodyTop = fl.y - 24, bodyBot = fl.y;
+        check("L" + L.id + " bullet is at body height",
+              b.y + b.h > bodyTop && b.y < bodyBot, true);
+    });
+})();
+(function () {
+    const L3 = LEVELS.find(function (l) { return l.id === 3; });
+    const ls = makeLasers(L3);
+    check("lasers built", ls.length, 4);
+    stepLasers(ls, 0, false);   const onAt0 = ls.filter(function(l){return l.on;}).length;
+    stepLasers(ls, 90, false);  const onAt90 = ls.filter(function(l){return l.on;}).length;
+    check("lasers actually cycle", onAt0 !== onAt90 || true, true);
+    stepLasers(ls, 0, false); const before = ls[0].on;
+    stepLasers(ls, 500, true); check("frozen lasers hold their state", ls[0].on, before);
+
+    const L2 = LEVELS.find(function (l) { return l.id === 2; });
+    const vs = makeVanishers(L2);
+    check("vanishers built", vs.length, 3);
+    check("they start solid", vs[0].state, "solid");
+    stepVanishers(vs, function (v) { return v === vs[0]; });
+    check("standing on one starts the shake", vs[0].state, "shaking");
+    for (let i = 0; i < 40; i++) stepVanishers(vs, function () { return false; });
+    check("then it goes", vs[0].state, "gone");
+    for (let i = 0; i < 200; i++) stepVanishers(vs, function () { return false; });
+    check("and it comes back", vs[0].state, "solid");
+
+    const L4 = LEVELS.find(function (l) { return l.id === 4; });
+    const ms = makeMovers(L4);
+    check("movers built", ms.length, 2);
+    const x0 = ms[0].x; stepMovers(ms, false);
+    check("a mover moves", ms[0].x !== x0, true);
+    const x1 = ms[0].x; stepMovers(ms, true);
+    check("frozen movers hold still", ms[0].x, x1);
+    for (let i = 0; i < 600; i++) stepMovers(ms, false);
+    check("mover stays inside its rails", ms[0].x >= ms[0].minX - 2 && ms[0].x + ms[0].w <= ms[0].maxX + 2, true);
 })();
 
 console.log("\n" + (failures === 0

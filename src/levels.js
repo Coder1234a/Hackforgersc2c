@@ -3,83 +3,87 @@
 // grid is 20px a square. safeRules = what this arena can survive; the roll
 // only ever draws from that list, so a rule can't hand you a level you
 // physically can't finish.
+//
+// hazards (lasers, vanishers, movers, ghosts) belong to the LEVEL and are
+// visible. the hidden rule is separate. keeping those apart is the whole
+// reason the deduction works.
+
+const ALL8 = ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM",
+              "BULLETS_PUSH","SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"];
 
 const LEVELS = [
     {
         id: 1, name: "First Light", theme: "meadow",
-        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM","SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"],
+        blurb: "Nothing here is trying to kill you. Work out what's different.",
+        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM",
+                    "SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"],
         spawn: { x: 100, y: 340 },
         exit:  { x: 720, y: 340, w: 30, h: 40 },
         platforms: [
-            { x: 0,   y: 380, w: 800, h: 20 },   // floor
-            { x: 0,   y: 280, w: 800, h: 20 },   // ceiling, 80px headroom
-            { x: 480, y: 320, w: 100, h: 14 }    // ledge
+            { x: 0,   y: 380, w: 800, h: 20 },
+            { x: 0,   y: 280, w: 800, h: 20 },
+            { x: 480, y: 320, w: 100, h: 14 }
         ],
         hasCeiling: true, hasProjectile: false
     },
     {
-        id: 2, name: "Tighter", theme: "cavern",
-        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM","SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"],
-        spawn: { x: 100, y: 340 },
-        exit:  { x: 480, y: 340, w: 30, h: 40 },
+        // the floor gives way. stand still and you lose it.
+        id: 2, name: "The Vanishing Act", theme: "cavern",
+        blurb: "The floor doesn't like being stood on.",
+        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","MOMENTUM",
+                    "SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"],
+        spawn: { x: 60, y: 340 },
+        exit:  { x: 720, y: 340, w: 30, h: 40 },
         platforms: [
-            { x: 0,   y: 380, w: 528, h: 20 },
-            { x: 0,   y: 280, w: 528, h: 20 },
-            { x: 288, y: 330, w: 96,  h: 14 }
+            { x: 0,   y: 380, w: 180, h: 20 },
+            { x: 620, y: 380, w: 180, h: 20 },
+            { x: 0,   y: 280, w: 800, h: 20 }
         ],
+        vanishers: [
+            { x: 200, y: 380, w: 90, h: 16 },
+            { x: 330, y: 380, w: 90, h: 16 },
+            { x: 460, y: 380, w: 90, h: 16 }
+        ],
+        ghosts: [ { x: 300, y: 320, w: 80, h: 14 } ],
         hasCeiling: true, hasProjectile: false
     },
     {
-        id: 3, name: "First Projectile", theme: "meadow",
-        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM","BULLETS_PUSH","SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"],
-        spawn: { x: 100, y: 340 },
-        exit:  { x: 440, y: 340, w: 30, h: 40 },
+        // beams on a fixed cycle. learn the rhythm, don't gamble.
+        id: 3, name: "Laser Grid", theme: "cavern",
+        blurb: "Four beams, one pattern. It repeats.",
+        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP",
+                    "BULLETS_PUSH","MOVEMENT_COSTS_TIME"],
+        spawn: { x: 60, y: 340 },
+        exit:  { x: 720, y: 340, w: 30, h: 40 },
         platforms: [
-            { x: 0,   y: 380, w: 480, h: 20 },
-            { x: 0,   y: 280, w: 480, h: 20 },
-            { x: 192, y: 320, w: 144, h: 14 }
+            { x: 0, y: 380, w: 800, h: 20 },
+            { x: 0, y: 280, w: 800, h: 20 },
+            { x: 340, y: 330, w: 120, h: 14 }
+        ],
+        lasers: [
+            { x: 220, y: 300, w: 8, h: 80, period: 150, duty: 0.45, offset: 0 },
+            { x: 400, y: 300, w: 8, h: 80, period: 150, duty: 0.45, offset: 50 },
+            { x: 560, y: 300, w: 8, h: 80, period: 150, duty: 0.45, offset: 100 },
+            { x: 660, y: 300, w: 8, h: 80, period: 210, duty: 0.35, offset: 25 }
         ],
         hasCeiling: true, hasProjectile: true
     },
     {
-        id: 4, name: "Head-height Projectile", theme: "cavern",
-        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM","BULLETS_PUSH","SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"],
-        spawn: { x: 100, y: 340 },
-        exit:  { x: 520, y: 340, w: 30, h: 40 },
+        // two platforms on patrol over a long drop.
+        id: 4, name: "The Long Way Round", theme: "meadow",
+        blurb: "Nothing under you stays put for long.",
+        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","MOMENTUM",
+                    "BULLETS_PUSH","MOVEMENT_COSTS_TIME"],
+        spawn: { x: 60, y: 340 },
+        exit:  { x: 730, y: 300, w: 30, h: 40 },
         platforms: [
-            { x: 0,   y: 380, w: 576, h: 20 },
-            { x: 0,   y: 280, w: 576, h: 20 },
-            { x: 384, y: 320, w: 144, h: 14 }
+            { x: 0,   y: 380, w: 200, h: 20 },
+            { x: 660, y: 340, w: 140, h: 20 },
+            { x: 0,   y: 260, w: 800, h: 20 }
         ],
-        hasCeiling: true, hasProjectile: true
-    },
-    {
-        // no NO_JUMP, the pit needs a jump. no MOMENTUM either, you'd
-        // skid straight in with no way to stop.
-        id: 5, name: "Split Floor", theme: "meadow",
-        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","BULLETS_PUSH","MOVEMENT_COSTS_TIME"],
-        spawn: { x: 100, y: 340 },
-        exit:  { x: 620, y: 340, w: 30, h: 40 },
-        platforms: [
-            { x: 0,   y: 380, w: 288, h: 20 },
-            { x: 384, y: 380, w: 288, h: 20 },
-            { x: 0,   y: 280, w: 672, h: 20 },
-            { x: 288, y: 340, w: 96,  h: 14 }    // stepping stone over the pit
-        ],
-        hasCeiling: true, hasProjectile: true
-    },
-    {
-        // step up to the raised floor needs a jump, so NO_JUMP's out
-        id: 6, name: "Two Levels", theme: "cavern",
-        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","MOMENTUM","BULLETS_PUSH","SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"],
-        spawn: { x: 100, y: 340 },
-        exit:  { x: 680, y: 280, w: 30, h: 40 },
-        platforms: [
-            { x: 0,   y: 380, w: 432, h: 20 },   // lower floor
-            { x: 432, y: 320, w: 288, h: 20 },   // raised floor
-            { x: 0,   y: 280, w: 432, h: 20 },   // ceiling over the lower half
-            { x: 432, y: 240, w: 288, h: 20 },   // ceiling over the raised half
-            { x: 96,  y: 300, w: 144, h: 14 }
+        movers: [
+            { x: 240, y: 360, w: 90, h: 14, vx: 1.4, minX: 220, maxX: 430 },
+            { x: 470, y: 340, w: 90, h: 14, vy: 1.1, minY: 300, maxY: 370 }
         ],
         hasCeiling: true, hasProjectile: true
     }
