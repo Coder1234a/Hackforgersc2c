@@ -7,15 +7,20 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 const GRAVITY = 0.5, JUMP = 11;
+const CLOCK_MAX = 30;          // seconds-ish. drains differently per rule.
+
 let levelIndex = 0;
 let level = LEVELS[levelIndex];
 
 const player = { x:0, y:0, w:24, h:24, vx:0, vy:0, onGround:false };
 
-let moves = 0;            // deliberate actions. this is the currency.
-let liveSet = [];         // rules still possible
+let moves = 0;                 // deliberate actions. this is the currency.
+let liveSet = [];
 let won = false, called = false, wasRight = false, score = 0, callMove = 0;
 let framesSinceRelease = 0, wasMoving = false;
+let bullets = [], clock = CLOCK_MAX, hitFlash = 0, movePulse = 0;
+let stepsTaken = 0, secsElapsed = 0, clockStart = CLOCK_MAX;
+let tick = 0;
 
 // something worth reporting happened. narrow the list, and note the exact
 // moment it became knowable - that's what the score is built on.
@@ -29,28 +34,30 @@ function logEvent(eventId) {
 
 function respawn() {
     player.x = level.spawn.x; player.y = level.spawn.y;
-    player.vx = 0; player.vy = 0; won = false;
+    player.vx = 0; player.vy = 0;
+    clock = CLOCK_MAX; clockStart = CLOCK_MAX;
+    stepsTaken = 0; secsElapsed = 0;
+    won = false;
 }
 
 // fresh go, new secret rule, everything back to square one
-function nextLevel() {
-    levelIndex = (levelIndex + 1) % LEVELS.length;
-    level = LEVELS[levelIndex];
-    newAttempt();
-}
-
 function newAttempt() {
     level = LEVELS[levelIndex];
+    resetLedges(level);
     activeRule = rollRule(level.safeRules);
     rollWash();
-    liveSet = ALL_RULES.slice();
+    liveSet = level.safeRules.slice();   // only what this arena can roll
+    bullets = makeBullets(level);
     moves = 0; won = false; called = false; score = 0;
-    framesSinceRelease = 0; wasMoving = false;
+    framesSinceRelease = 0; wasMoving = false; hitFlash = 0;
     resetAttempt();
-    closePanel();
-    hideReveal();
-    renderPanel(liveSet);
+    closePanel(); hideReveal(); renderPanel(liveSet);
     respawn();
+}
+
+function nextLevel() {
+    levelIndex = (levelIndex + 1) % LEVELS.length;
+    newAttempt();
 }
 
 // only these 3 count as a move. pressing D or shift isn't an action.
@@ -59,12 +66,12 @@ const GAME_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp"];
 const keys = {};
 document.addEventListener("keydown", function (e) {
     if (e.key === "n" || e.key === "N") { newAttempt(); return; }
-    if (e.key === "l" || e.key === "L") { nextLevel(); return; }
     if (e.key === "r" || e.key === "R") { respawn(); return; }
+    if (e.key === "l" || e.key === "L") { nextLevel(); return; }
     if (e.key === "c" || e.key === "C") { if (!called) togglePanel(); return; }
     if (e.key === "Escape") { closePanel(); return; }
-    if (panelOpen()) return;                       // panel handles its own keys
-    if (!keys[e.key] && GAME_KEYS.includes(e.key) && !won && !called) moves++;
+    if (panelOpen()) return;
+    if (!keys[e.key] && GAME_KEYS.includes(e.key) && !won && !called) { moves++; movePulse = 12; }
     keys[e.key] = true;
 });
 document.addEventListener("keyup", function (e) { keys[e.key] = false; });
@@ -73,7 +80,11 @@ function overlaps(a, b) {
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
+// one frame of the world. rules only ever reach in through here.
 function update() {
+    tick++;
+    if (movePulse > 0) movePulse--;
+    if (hitFlash > 0) hitFlash--;
     if (won || called || panelOpen()) return;
 
     const g = gravityDirection();
@@ -83,7 +94,7 @@ function update() {
     let raw = 0;
     if (keys["ArrowLeft"])  raw = -1;
     if (keys["ArrowRight"]) raw = 1;
-    const dir = inputDirection(raw);               // may come back flipped
+    const dir = inputDirection(raw);
 
     player.vx += dir * acceleration();
     if (dir === 0) player.vx *= friction();
@@ -121,6 +132,7 @@ function update() {
     player.vy += GRAVITY * g;
     player.y += player.vy;
 
+    const wasAir = !player.onGround;
     player.onGround = false;
     for (const p of level.platforms) {
         if (!overlaps(player, p)) continue;
@@ -131,6 +143,34 @@ function update() {
 
     if (jumped && wasOnGround) logEvent(detectJump(true, yBefore, player.y));
 
+    // landed after being in the air. does the floor stay put?
+    if (player.onGround && wasAir && Math.abs(player.x - xBefore) > 0.5) {
+        const shifted = platformsShift();
+        if (shifted) shiftLedges(level);
+        logEvent(shifted ? "LANDED_REARRANGED" : "LANDED_STABLE");
+    }
+
+    // bullets. slow enough that you can choose to walk into one.
+    stepBullets(bullets);
+    for (const b of bullets) {
+        if (!overlaps(player, b)) continue;
+        hitFlash = 14;
+        if (bulletHurts()) { logEvent("BULLET_HURT"); respawn(); }
+        else { logEvent("BULLET_SHOVED"); player.vx = (b.vx > 0 ? 1 : -1) * 9; }
+        break;
+    }
+
+    // the clock. drains by the second, or by the pixel, depending.
+    const moved = Math.abs(player.x - xBefore);
+    stepsTaken += moved; secsElapsed += 1 / 60;
+    clock -= clockDrain(1 / 60, moved);
+    if (secsElapsed > 2.5) {
+        const drained = clockStart - clock;
+        logEvent(detectTimer(drained, stepsTaken / 240, secsElapsed));
+    }
+    if (clock <= 0) { hitFlash = 20; respawn(); }
+
+    // off the top or bottom of the world, back to the start
     if (player.y > canvas.height || player.y + player.h < 0) respawn();
     if (overlaps(player, level.exit)) won = true;
 }
@@ -143,10 +183,8 @@ function submitCall(ruleId) {
     score = gapScore(getSufficiency(), callMove, wasRight);
     recordRun({ levelId: level.id, rule: activeRule, guess: ruleId, correct: wasRight,
                 moves: callMove, sufficiency: getSufficiency(), score: score });
-    showReveal(ruleId, activeRule, wasRight, score, getSufficiency(), callMove);
+    showReveal(ruleId, activeRule, wasRight, score, getSufficiency(), callMove, bestFor(activeRule));
 }
-
-let tick = 0;              // frames since load, only the scenery reads it
 
 // six washes that mean nothing, on purpose. one gets picked per attempt and
 // laid over whatever theme the arena's using. you SEE the world shift the
@@ -188,6 +226,19 @@ function draw() {
     const pipeMid = spawnMid - 24;
     paintPipe(ctx, pipeMid, surfaceUnder(level, pipeMid, level.spawn.y), t);
     paintExit(ctx, level.exit, won, t);
+
+    // bullets are red-white, never yellow. the player is yellow and you
+    // should never squint to work out which blob is which.
+    for (const b of bullets) {
+        const cx = b.x + b.w/2, cy = b.y + b.h/2;
+        ctx.fillStyle = "rgba(230,60,50,.28)";
+        ctx.beginPath(); ctx.arc(cx, cy, b.w, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "#e63c32";
+        ctx.beginPath(); ctx.arc(cx, cy, b.w/2 + 1, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "#ffe9e6";
+        ctx.beginPath(); ctx.arc(cx - 1.5, cy - 1.5, 2.4, 0, Math.PI*2); ctx.fill();
+    }
+
     paintPlayer(ctx, player, surfaceUnder(level, player.x + player.w / 2, player.y));
 
     // the attempt wash. "color" only touches hue + saturation and leaves
@@ -201,20 +252,13 @@ function draw() {
     ctx.fillRect(0, 0, w, h);
     ctx.restore();
 
-    paintScanlines(ctx, w, h);
+    if (hitFlash > 0) {                             // you got hit / ran out
+        ctx.fillStyle = "rgba(220,70,50," + (hitFlash / 34).toFixed(3) + ")";
+        ctx.fillRect(0, 0, w, h);
+    }
 
-    // HUD strip up top so text never sits on the play area
-    ctx.fillStyle = "rgba(11,14,19,0.86)"; ctx.fillRect(0, 0, w, 38);
-    ctx.fillStyle = "rgba(201,231,92,0.5)"; ctx.fillRect(0, 37, w, 1);
-    ctx.fillStyle = "#f5c542"; ctx.font = "bold 15px system-ui, sans-serif";
-    ctx.fillText(String(moves), 16, 25);
-    ctx.fillStyle = "#9aa3b2"; ctx.font = "12px system-ui, sans-serif";
-    ctx.fillText("moves", 16 + ctx.measureText(String(moves)).width + 14, 25);
-    ctx.fillText(level.name, 130, 25);
-    const best = bestFor(activeRule);
-    if (best !== null) ctx.fillText("best for this rule: " + best, 130 + ctx.measureText(level.name).width + 24, 25);
-    ctx.fillStyle = "#6f7889";
-    ctx.fillText("← → ↑ move    C call    R retry    N new rule    L next arena", 400, 25);
+    paintScanlines(ctx, w, h);
+    drawHud(w);
 
     if (won && !called) {
         ctx.fillStyle = "rgba(12,14,18,0.86)"; ctx.fillRect(0, 0, w, h);
@@ -229,4 +273,31 @@ function draw() {
     }
 }
 
-function loop() { tick++; update(); draw(); requestAnimationFrame(loop); }
+// HUD strip up top so text never sits on the play area.
+//
+// note what is NOT here: your best for the current rule. it used to be, and
+// it was handing the answer over - see the same number twice and you know
+// you're on the same rule. it lives on the reveal screen now.
+function drawHud(w) {
+    ctx.fillStyle = "rgba(11,14,19,0.86)"; ctx.fillRect(0, 0, w, 38);
+    ctx.fillStyle = "rgba(201,231,92,0.5)"; ctx.fillRect(0, 37, w, 1);
+
+    ctx.fillStyle = movePulse > 0 ? "#ffffff" : "#f5c542";
+    ctx.font = "bold 15px system-ui, sans-serif";
+    ctx.fillText(String(moves), 16, 25);
+    ctx.fillStyle = "#9aa3b2"; ctx.font = "12px system-ui, sans-serif";
+    ctx.fillText("moves", 16 + ctx.measureText(String(moves)).width + 14, 25);
+
+    ctx.fillText(level.name, 96, 25);
+
+    const bx = 228, bw = 104, frac = Math.max(0, clock / CLOCK_MAX);
+    ctx.fillStyle = "#2a2f39"; ctx.fillRect(bx, 14, bw, 10);
+    ctx.fillStyle = frac < 0.25 ? "#e8705a" : "#7fd39a";
+    ctx.fillRect(bx, 14, bw * frac, 10);
+    ctx.fillStyle = "#6f7889"; ctx.fillText("time", bx + bw + 8, 25);
+
+    ctx.fillStyle = "#6f7889";
+    ctx.fillText("← → ↑ move    C call    R retry    N new rule    L next arena", 396, 25);
+}
+
+function loop() { update(); draw(); requestAnimationFrame(loop); }

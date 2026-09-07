@@ -75,14 +75,17 @@ function commit() {
 
 document.addEventListener("keydown", function (e) {
     if (!panelOpen()) return;
+    const pool = (typeof level !== "undefined" && level.safeRules)
+        ? RULES.filter(function (r) { return level.safeRules.includes(r.id); })
+        : RULES;
     const n = parseInt(e.key, 10);
-    if (n >= 1 && n <= RULES.length) pick(RULES[n-1].id);
+    if (n >= 1 && n <= pool.length) pick(pool[n-1].id);
     if (e.key === "h" || e.key === "H") toggleHints();
     if (e.key === "Enter") commit();
 });
 
 // the payoff. first time they see the rule's own colour.
-function showReveal(guess, truth, right, score, sufficiency, callMove) {
+function showReveal(guess, truth, right, score, sufficiency, callMove, best) {
     const truthRule = RULES.find(function (r) { return r.id === truth; });
     const guessRule = RULES.find(function (r) { return r.id === guess; });
 
@@ -113,6 +116,8 @@ function showReveal(guess, truth, right, score, sufficiency, callMove) {
         body +
         '<div class="score">' + score + '</div><div class="slabel">points</div>' +
         '<p class="msg">' + msg + '</p>' +
+        (best !== null && best !== undefined
+            ? '<p class="hint">best anyone\'s got this rule in: ' + best + ' moves</p>' : '') +
         '<p class="hint">Press N for a new rule</p></div>';
     $reveal.hidden = false;
 }

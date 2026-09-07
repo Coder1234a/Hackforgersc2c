@@ -7,7 +7,7 @@
 const LEVELS = [
     {
         id: 1, name: "First Light", theme: "meadow",
-        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM"],
+        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM","SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"],
         spawn: { x: 100, y: 340 },
         exit:  { x: 720, y: 340, w: 30, h: 40 },
         platforms: [
@@ -19,7 +19,7 @@ const LEVELS = [
     },
     {
         id: 2, name: "Tighter", theme: "cavern",
-        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM"],
+        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM","SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"],
         spawn: { x: 100, y: 340 },
         exit:  { x: 480, y: 340, w: 30, h: 40 },
         platforms: [
@@ -31,7 +31,7 @@ const LEVELS = [
     },
     {
         id: 3, name: "First Projectile", theme: "meadow",
-        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM"],
+        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM","BULLETS_PUSH","SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"],
         spawn: { x: 100, y: 340 },
         exit:  { x: 440, y: 340, w: 30, h: 40 },
         platforms: [
@@ -43,7 +43,7 @@ const LEVELS = [
     },
     {
         id: 4, name: "Head-height Projectile", theme: "cavern",
-        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM"],
+        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","NO_JUMP","MOMENTUM","BULLETS_PUSH","SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"],
         spawn: { x: 100, y: 340 },
         exit:  { x: 520, y: 340, w: 30, h: 40 },
         platforms: [
@@ -57,7 +57,7 @@ const LEVELS = [
         // no NO_JUMP, the pit needs a jump. no MOMENTUM either, you'd
         // skid straight in with no way to stop.
         id: 5, name: "Split Floor", theme: "meadow",
-        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS"],
+        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","BULLETS_PUSH","MOVEMENT_COSTS_TIME"],
         spawn: { x: 100, y: 340 },
         exit:  { x: 620, y: 340, w: 30, h: 40 },
         platforms: [
@@ -71,7 +71,7 @@ const LEVELS = [
     {
         // step up to the raised floor needs a jump, so NO_JUMP's out
         id: 6, name: "Two Levels", theme: "cavern",
-        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","MOMENTUM"],
+        safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","MOMENTUM","BULLETS_PUSH","SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"],
         spawn: { x: 100, y: 340 },
         exit:  { x: 680, y: 280, w: 30, h: 40 },
         platforms: [
