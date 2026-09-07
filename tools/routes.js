@@ -1,18 +1,19 @@
-// routes.js - proves every arena can actually be finished, under grip and
-// under momentum, before anybody plays it.
+// routes.js - proves every arena can be finished, under grip AND under
+// momentum, before anyone plays it.
 const fs = require('fs');
 const { solve, PHYS } = require('./pathfind.js');
-// levels.js declares with const, so eval it in a function and hand the two
-// things we need back out.
+// levels.js uses const, so eval it inside a function and hand the two bits
+// we need back out.
 const { LEVELS, WORLD_W } = (new Function(
     fs.readFileSync('game/src/levels.js', 'utf8') + '\nreturn { LEVELS, WORLD_W };'))();
 
 function asGraph(L) {
-    // movers count from where they start, vanishers count until you touch
-    // them - both are things you can stand on when you first meet them.
-    // the cave roof has to be in here. it's solid rock and it caps every
-    // jump under it - leave it out and the planner flies through the
-    // ceiling and hands you a route the engine will never reproduce.
+    // movers count from where they start, vanishers count til you touch
+    // them - both are standable when you first meet them.
+    //
+    // the cave roof HAS to be in here. solid rock, caps every jump under
+    // it. leave it out and the planner flies through the ceiling and hands
+    // you a route the engine will never reproduce.
     const plats = L.platforms
         .concat(L.movers || [])
         .concat(L.vanishers || [])
@@ -37,14 +38,13 @@ for (const L of LEVELS) {
         }
         if (ph === 'normal') plans[L.name] = r.path.map(function (st) { return st.how; });
 
-        // the cheese is different: the shortest route is allowed to cut
-        // through traps, because a trap you land on ends the run - that IS
-        // the level. what has to be true is that the SAFE ledges on their
-        // own get you to the door.
+        // cheese is different. the shortest route may cut through traps,
+        // cos landing on a trap ends the run - that IS the level. what has
+        // to hold is that the SAFE ledges alone reach the door.
         if (L.cheesed) {
-            // the traps stay in the world - you fly past them, you just
-            // must not come down on one. planning without them gives a
-            // route the real arena will never let you walk.
+            // traps stay in the world - you fly past them, you just must
+            // not come down on one. planning w/out them gives a route the
+            // real arena will never let you walk.
             const sr = solve(G, PHYS[ph], function (i) { return !!G.platforms[i].safe; });
             console.log('       safe ledges alone: ' +
                 (sr && sr.path ? 'reach the door in ' + sr.path.length + ' moves' : 'DEAD END'));

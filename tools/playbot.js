@@ -1,9 +1,9 @@
-// playbot.js - takes the route the pathfinder worked out and plays it in
-// the actual game, under every rule the arena can roll.
+// playbot.js - takes the route pathfind worked out and plays it in the
+// actual game, under every rule the arena can roll.
 //
-// it calls update() straight out rather than waiting on requestAnimationFrame,
-// so a run that takes a minute to watch takes about a second to check. if
-// the plan and the engine ever disagree, this is where it shows up.
+// calls update() straight out instead of waiting on rAF, so a run that
+// takes a minute to watch takes about a second to check. if the plan and
+// the engine ever disagree, this is where it shows.
 const { chromium } = require('playwright');
 const plans = require('./routes.json');
 const NAMES = ['Dripstone', 'Cheesy Chase', 'Grassy Falls', 'Dripstone, again'];
@@ -30,7 +30,7 @@ async function play(page, arenaIndex, rule) {
       // about to jump. under momentum a standing jump goes nowhere, so the
       // run-up isn't polish, it's the only way the move works at all.
       // walk to the launch spot, then build speed along the ledge in the
-      // direction we're jumping. backing off first just walked the bot off
+      // jump direction. backing off first just walked the bot straight off
       // the narrow cheese ledges.
       const runFrom = step.x;
       for (let i = 0; i < 400; i++) {
@@ -80,10 +80,10 @@ async function play(page, arenaIndex, rule) {
       clear();
     }
 
-    // the plan ends on the last ledge; walking the final few steps into the
-    // door is the bit a person does without thinking. it also covers the
-    // arenas whose last ledge is the one that RUNS - the planner sees it
-    // parked, the game has already carried you somewhere else.
+    // plan ends on the last ledge. walking the final few steps into the
+    // door is the bit a person does w/out thinking. also covers arenas
+    // whose last ledge is the one that RUNS - planner sees it parked, the
+    // game already carried you elsewhere.
     for (let i = 0; i < 900 && !finished(); i++) {
       if (!alive()) { screen = 'PLAY'; restarts++; }
       const cx = level.exit.x + level.exit.w / 2;

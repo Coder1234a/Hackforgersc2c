@@ -1,76 +1,70 @@
-// rules.js - the only file that knows what a rule actually DOES.
+// rules.js - only file that knows what a rule actually DOES.
 //
-// engine never assumes anything, it asks in here every frame. that's the
-// whole trick: change the answer, the world changes, and not one line of
-// drawing or collision code has to know about it.
+// engine never assumes, it asks in here every frame. swap an answer and the
+// world changes, w/out one line of drawing or collision code caring.
 
-let activeRule = null;   // the secret. player never sees this
+let activeRule = null;   // the secret. player never sees this.
 
-// pick one at random from whatever this arena can survive. "NORMAL" is in
-// there deliberately: sometimes nothing's wrong, and working THAT out is
-// its own puzzle.
+// roll one from whatever this arena survives. NORMAL is in the pool on
+// purpose - sometimes nothing's wrong, and spotting that is its own puzzle.
 function rollRule(safeRules) {
     if (safeRules.length === 0) throw new Error("Level has no safe rules");
     return safeRules[Math.floor(Math.random() * safeRules.length)];
 }
 
-// +1 = down like normal, -1 = up instead
+// +1 down, -1 up
 function gravityDirection() {
     return activeRule === "REVERSE_GRAVITY" ? -1 : 1;
 }
 
-// direction pressed vs direction you actually get. usually the same.
+// what you pressed vs what you get. usually the same.
 function inputDirection(pressed) {
     return activeRule === "INVERTED_CONTROLS" ? -pressed : pressed;
 }
 
-// under NO_JUMP you still crouch, you just never leave the floor
+// NO_JUMP: you can still crouch, you just never leave the floor
 function canJump() {
     return activeRule !== "NO_JUMP";
 }
 
-// how fast you get going. 99 is instant.
+// accel. 99 = instant.
 //
-// momentum used to sit at 0.16 and it made the cave unwinnable - you could
-// not build enough speed in the air to make the jump onto the small shelf,
-// so the rule was a death sentence rather than a puzzle. 0.24 still feels
-// heavy off the mark; the tell you're meant to notice is the SKID, and
-// that's friction, which hasn't moved.
+// was 0.16 and the cave was flat out unwinnable - couldn't build enough
+// speed mid-air for the jump onto the small shelf. 0.24 still feels heavy
+// off the mark. the tell is the SKID anyway, and that's friction.
 function acceleration() {
     return activeRule === "MOMENTUM" ? 0.24 : 99;
 }
 
-// do you stop when you let go. 0.945 gives ~55px of skid, near 3 squares,
-// which you cannot miss. was 0.86 and nobody noticed it.
+// do you stop when you let go? 0.945 = ~55px skid, near 3 squares, can't
+// miss it. was 0.86 and nobody noticed.
 function friction() {
     return activeRule === "MOMENTUM" ? 0.945 : 0.4;
 }
 
-// momentum caps you a touch lower, otherwise the skid flings you miles
+// momentum caps a touch lower or the skid flings you miles
 function maxSpeed() {
     return activeRule === "MOMENTUM" ? 3.4 : 4;
 }
 
-// bullets: normally they hurt. under BULLETS_PUSH they just shove you.
+// normally bullets hurt. under BULLETS_PUSH they just shove.
 function bulletHurts() {
     return activeRule !== "BULLETS_PUSH";
 }
 
-// does the floor rearrange itself every time you land?
+// does the floor rearrange every time you land?
 function platformsShift() {
     return activeRule === "SHIFTING_PLATFORMS";
 }
 
-// the clock. counts UP now, not down, because a leaderboard wants
-// "identified in 8.4s" not "had 22 left". normally it ticks with the wall
-// clock and ignores your feet.
+// clock counts UP, not down - a leaderboard wants "got it in 8.4s", not
+// "had 22 left". normally ticks w/ the wall clock and ignores your feet.
 //
-// under MOVEMENT_COSTS_TIME it ignores the wall entirely and only advances
-// when you move. tuned so the two run at nearly the same rate while you're
-// walking about, on purpose. the only way to separate them is to stand
-// dead still and watch the hand. hardest probe in the pool, and it should
-// be - it's the one thing a platformer never asks you to do.
-const CLOCK_PER_PIXEL = 1 / 240;   // ~1s per second at a normal walking pace
+// under MOVEMENT_COSTS_TIME it only moves when you do. tuned so the two run
+// at nearly the same rate while you're walking, deliberately. only way to
+// split them is stand dead still and watch the hand. hardest probe we've
+// got - fair enough, no platformer ever asks you to stand still.
+const CLOCK_PER_PIXEL = 1 / 240;   // ~1s/sec at walking pace
 
 function clockAdvance(dtSeconds, pixelsMoved) {
     if (activeRule === "MOVEMENT_COSTS_TIME") return pixelsMoved * CLOCK_PER_PIXEL;

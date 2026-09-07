@@ -1,7 +1,7 @@
-// ui.js - the call panel + the reveal screen.
+// ui.js - the call panel + the score card.
 //
-// both are DOM, not canvas. means they actually look like screens, and
-// Shruti can restyle them without touching a line of game code.
+// both DOM, not canvas. means they look like actual screens, and Shruti can
+// restyle them w/out touching a line of game code.
 
 const RULES = [
     { id:"NORMAL",              label:"Nothing — normal physics", colour:"#7C8798" },
@@ -27,18 +27,17 @@ function closePanel() { $panel.hidden = true; picked = null; }
 function openPanel()  { $panel.hidden = false; picked = null; renderPanel(liveSet); }
 function togglePanel(){ $panel.hidden ? openPanel() : closePanel(); }
 
-// ALL EIGHT fundamentals are listed, every time. that's the whole rule
-// book, so a player can see the shape of the game on their first arena
-// instead of discovering rules four levels in.
+// all EIGHT fundamentals, every time. that's the whole rule book, so you
+// see the shape of the game on arena 1 instead of finding rules out four
+// levels deep.
 //
-// the ones this arena can't roll are greyed out and can't be picked. that
-// isn't hiding anything - it's the difference between a puzzle and a trap.
-// asking someone to rule out a bullet rule on a level with no bullets is
-// just cruelty with extra steps.
+// ones this arena can't roll are greyed + unpickable. not hiding anything -
+// it's puzzle vs trap. asking someone to rule out a bullet rule on a level
+// w/ no bullets is just cruelty w/ extra steps.
 //
-// nothing is ever crossed off for you among the LIVE ones, though. if the
-// game ruled out the wrong answers you literally couldn't be wrong, and a
-// score you can't lose is worth nothing.
+// nothing gets crossed off for you among the LIVE ones though. rule out the
+// wrong answers and you literally can't be wrong, and a score you can't
+// lose is worth nothing.
 function renderPanel(live) {
     if (!$rows) return;
     const pool = (typeof level !== "undefined" && level.safeRules) ? level.safeRules : ALL_RULES;
@@ -56,6 +55,7 @@ function renderPanel(live) {
         if (inPlay) row.onclick = function () { pick(rule.id); };
         $rows.appendChild(row);
     });
+    // the number keys on offer depend on the arena
     const foot = document.querySelector("#panel .foot");
     if (foot) foot.innerHTML =
         '<kbd>1</kbd>&ndash;<kbd>' + RULES.length + '</kbd> to pick &middot; ' +
@@ -67,8 +67,8 @@ function pick(id) {
     renderPanel(liveSet);
 }
 
-// grab the pick BEFORE closing, closing wipes it. these two lines the
-// wrong way round is what broke the button for an hour.
+// grab the pick BEFORE closing - closing wipes it. these two lines the
+// wrong way round cost us an hour once.
 function commit() {
     if (!picked) return;
     const choice = picked;
@@ -80,7 +80,7 @@ document.addEventListener("keydown", function (e) {
     if (!panelOpen()) return;
     const pool = (typeof level !== "undefined" && level.safeRules) ? level.safeRules : ALL_RULES;
     const n = parseInt(e.key, 10);
-    // the number matches the row you can see. a greyed-out row does nothing.
+    // number matches the row you can see. greyed row does nothing.
     if (n >= 1 && n <= RULES.length && pool.includes(RULES[n-1].id)) pick(RULES[n-1].id);
     if (e.key === "Enter") commit();
 });
@@ -112,8 +112,8 @@ function showReveal(guess, truth, right, score, sufficiency, callMove, best, sec
                '<div class="rulename" style="background:' + truthRule.colour + '">' + truthRule.label + '</div>';
     }
 
-    // show the working. a total on its own reads as arbitrary; the same
-    // total with "-90 for 6 moves" under it teaches you how to do better.
+    // show the working. a bare total reads as arbitrary; the same total w/
+    // "-90 for 6 moves" under it actually teaches you something.
     let sums = "";
     if (breakdown) {
         sums = '<div class="sums">' + breakdown.lines.map(function (l) {
@@ -142,7 +142,7 @@ function showReveal(guess, truth, right, score, sufficiency, callMove, best, sec
         '  ·  <kbd>Q</kbd> same arena, new rule</p></div>';
     $reveal.hidden = false;
 
-    // wired here rather than inline onclick, so the card stays plain HTML
+    // wired here, not inline onclick, so the card stays plain html
     const again = document.getElementById("btnAgain");
     const next  = document.getElementById("btnNext");
     if (again) again.onclick = function () { revealAgain(); };

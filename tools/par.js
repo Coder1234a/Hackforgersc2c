@@ -1,12 +1,12 @@
 // par.js - how many moves does a clean run actually take?
 //
-// a "move" in this game is a fresh press of a movement key, exactly as the
-// keydown handler counts it. so the bot counts them the same way: it drives
-// the key table, and every false->true on a game key is one move. no
-// guessing, no multiplying hops by a fudge factor.
+// a "move" here = a fresh press of a movement key, exactly how the keydown
+// handler counts it. so the bot counts the same way: drives the key table,
+// every false->true on a game key is one move. no guessing, no multiplying
+// hops by some fudge factor.
 //
-// runs each arena several times under NORMAL - the rock timing is different
-// every go - and reports the average.
+// runs each arena a few times under NORMAL (rock timing differs every go)
+// and reports the average.
 const { chromium } = require('playwright');
 const plans = require('./routes.json');
 const NAMES = ['Dripstone', 'Cheesy Chase', 'Grassy Falls', 'Dripstone, again'];
@@ -19,7 +19,7 @@ async function oneRun(page, arenaIndex) {
     const plan = plans[level.name];
     const finished = () => screen === 'WON' || levelIndex !== startLevel;
 
-    // count a press the same way the real keydown handler does
+    // count presses the same way the real keydown handler does
     let counted = 0;
     const set = (k, v) => { if (v && !keys[k]) counted++; keys[k] = v; };
     const clear = () => { set('ArrowLeft', false); set('ArrowRight', false); set('ArrowUp', false); };
@@ -52,10 +52,10 @@ async function oneRun(page, arenaIndex) {
         if (finished()) { clear(); return { moves: counted, restarts: restarts, done: true }; }
         if (screen !== 'PLAY') { screen = 'PLAY'; restarts++; s = -1; break; }
         const past = step.dir > 0 ? player.x >= step.x - 4 : player.x <= step.x + 4;
-        // par is measured in NORMAL, where you're at full speed on frame
-        // one - so jump the moment you're across the mark. waiting to build
-        // speed is a momentum technique and on the grass it just gives the
-        // step time to crumble under you.
+        // par is measured in NORMAL, full speed on frame one, so jump the
+        // moment you're across the mark. waiting to build speed is a
+        // momentum technique - on the grass it just gives the step time to
+        // crumble under you.
         const go = past;
         set('ArrowRight', step.dir > 0); set('ArrowLeft', step.dir < 0);
         set('ArrowUp', step.jump && !jumped && go);

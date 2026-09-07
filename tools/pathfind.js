@@ -1,15 +1,14 @@
-// pathfind.js - can you actually get from the spawn to the door?
+// pathfind.js - can you actually get from spawn to door?
 //
-// runs the engine's real physics (gravity 0.5, jump 11, top speed 4, solid
-// on every face) off every ledge in an arena, sees where you land, and
-// builds a graph out of it. then BFS. if there's no path this prints "NO
-// ROUTE" and the arena is broken no matter how nice it looks.
+// runs the engine's real physics (gravity 0.5, jump 11, top speed 4,
+// one-way ledges) off every ledge in an arena, sees where you land, builds
+// a graph, BFS's it. no path = the arena is broken no matter how nice it
+// looks. that's the whole tool.
 
 const G = 0.5, JUMP = 11, PW = 24, PH = 24;
 
-// the two ways the player can move. momentum jumps shorter and lands
-// slidier, so an arena that only works at full grip is an arena that's
-// broken half the time.
+// the two ways you can move. momentum jumps shorter + lands slidier, so an
+// arena that only works at full grip is broken half the time.
 const PHYS = {
     normal:   { accel: 99,   max: 4,   grip: 0.4   },
     momentum: { accel: 0.24, max: 3.4, grip: 0.945 }
@@ -19,12 +18,12 @@ function overlaps(a, b) {
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
-// one flight. returns the index of the ledge landed on, 'EXIT', or null.
+// one flight. returns the ledge index landed on, 'EXIT', or null.
 function fly(level, startX, startY, dir, doJump, maxFrames, phys) {
     const M = phys || PHYS.normal;
     const p = { x: startX, y: startY, w: PW, h: PH, vx: 0, vy: 0 };
     let onGround = true, jumped = false;
-    // a run-up, because a standing jump under momentum goes nowhere
+    // run-up, cos a standing jump under momentum goes nowhere
     if (M.accel < 1) p.vx = dir * M.max;
     for (let f = 0; f < maxFrames; f++) {
         p.vx += dir * M.accel;
@@ -67,7 +66,7 @@ function fly(level, startX, startY, dir, doJump, maxFrames, phys) {
     return null;
 }
 
-// every ledge you can get to from this one, in one move
+// every ledge reachable from this one in a single move
 function neighbours(level, i, phys, allow) {
     const from = level.platforms[i];
     const out = new Map();
@@ -76,9 +75,9 @@ function neighbours(level, i, phys, allow) {
             for (const doJump of [true, false]) {
                 const to = fly(level, x, from.y - PH, dir, doJump, 200, phys);
                 if (to === null || to === i || to === -1) continue;
-                // some arenas only let you LAND on certain ledges - the
-                // cheese, where the wrong hole ends the run. the flight
-                // still collides with everything, it just isn't an edge.
+                // some arenas only let you LAND on certain ledges (the
+                // cheese, where a wrong hole ends the run). the flight
+                // still collides w/ everything, it just isn't an edge.
                 if (allow && to !== 'EXIT' && !allow(to)) continue;
                 if (!out.has(to)) out.set(to, { x: Math.round(x), dir: dir, jump: doJump });
             }

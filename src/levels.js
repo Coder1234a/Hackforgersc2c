@@ -1,31 +1,28 @@
 // levels.js - the arenas. plain data, zero logic.
 //
-// the grid is 1280x600 and it matches the artwork one for one. every ledge
-// below was measured off the picture, so the thing you can see is the thing
-// you collide with.
+// grid is 1280x600, one for one w/ the artwork. every ledge below was
+// measured off the picture, so what you can see is what you collide with.
 //
 // house rule: hazards belong to the LEVEL and they're visible. the hidden
-// rule is a separate thing. keep those two apart or you can't tell "the
-// rock did that" from "the rule did that", and the whole game falls over.
+// rule is separate. keep them apart or you can't tell "the rock did that"
+// from "the rule did that", and the whole thing falls over.
 
-// the world is exactly the size of the pictures. anything that needs to
-// know how wide the cave is asks these instead of guessing.
+// world is exactly the size of the pictures. anything needing to know how
+// wide the cave is asks these instead of guessing.
 const WORLD_W = 1280, WORLD_H = 600;
 
-// parMoves is the average number of MOVES a clean run takes in normal
-// physics - not a guess, not hops x 2. tools/par.js plays each arena seven
-// times counting presses exactly the way the keydown handler counts them,
-// and these are the averages it reported. re-run it if you change an
-// arena's shape.
+// parMoves = avg MOVES a clean run takes in normal physics. not a guess,
+// not hops x 2 - tools/par.js plays each arena 7x counting presses exactly
+// like the keydown handler does. re-run it if you reshape an arena.
 
 // ===================== ARENA 1 + 4 : DRIPSTONE =========================
 //
-// arena 1 is the control - nothing hidden, it just teaches you the cave.
-// arena 4 is the same stone with something changed underneath, and that
-// contrast IS the game. you can't spot a difference you were never shown.
+// arena 1 = the control. nothing hidden, it just teaches you the cave.
+// arena 4 = same stone, something changed underneath. that contrast is the
+// game - you can't spot a difference you were never shown.
 const CAVE_PLATFORMS = [
-    // the roof. one slab of rock, so REVERSE_GRAVITY has somewhere to put
-    // you instead of flinging you out of the world.
+    // roof. one slab, so REVERSE_GRAVITY has somewhere to put you rather
+    // than flinging you clean out of the world.
     { x:   0, y:   0, w:1280, h: 120, fixed: true },
 
     { x: 335, y: 184, w: 510, h:  10 },              // long upper shelf
@@ -33,17 +30,16 @@ const CAVE_PLATFORMS = [
     { x:  24, y: 290, w: 118, h:   9 },              // far left, off the route
     { x: 181, y: 317, w: 240, h:   9 },              // mid shelf
 
-    // the clock tower's parapet. masonry, not a shelf - it never moves and
-    // you spawn stood on it.
+    // tower parapet. masonry, not a shelf - never moves, you spawn on it.
     { x: 428, y: 307, w: 296, h:  12, fixed: true },
 
-    // the gate's ledge. also pinned, because a gate hovering with its step
-    // 100px away just looks broken.
+    // gate ledge. also pinned - a gate hovering w/ its step 100px away
+    // just looks broken.
     { x:1001, y: 307, w:  98, h:   8, fixed: true }
 ];
 
-// eleven of them across the roof. sizes and periods deliberately uneven -
-// a tidy rhythm would be learnable in one pass and this shouldn't be.
+// 11 of them across the roof. sizes + periods deliberately uneven; a tidy
+// rhythm is learnable in one pass and this shouldn't be.
 const CAVE_STALS = [
     { x:  90, y: 66, size: 1, period: 250, offset:   0 },
     { x: 190, y: 66, size: 0, period: 290, offset:  95 },
@@ -58,26 +54,23 @@ const CAVE_STALS = [
     { x:1110, y: 66, size: 2, period: 320, offset:  70 }
 ];
 
-// the stub right of the light shaft. it's the one that was already painted
-// into the cave - we rubbed it out of the picture so it could come alive.
-// dead still until you land on it, then it carries you at the gate. you can
-// stare at it all day and it only betrays you once you commit.
+// the stub right of the light shaft. already painted into the cave - we
+// rubbed it out of the picture so it could come alive. dead still til you
+// land on it, then it runs you at the gate. stare all you like, it only
+// betrays you once you commit.
 const CAVE_MOVER = [
     { x: 905, y: 185, w: 58, h: 8, vx: 1.6, minX: 880, maxX: 1090, trigger: true }
 ];
 
 // ===================== ARENA 2 : CHEESY CHASE ==========================
 //
-// every ledge here sits inside a hole that's actually painted in the
-// cheese, and they all look the same. seven of them are the way out. the
-// other eighteen cheese you and send you back to the start. that's it,
-// that's the level - it's a memory test wearing a platformer's coat.
+// every ledge sits inside a hole that's genuinely painted in the cheese,
+// and they all look alike. 7 are the way out, the other 18 cheese you and
+// bin you back to the start. that's the level.
 //
-// safe:true is the path. do NOT let anything on screen hint at which is
-// which, or there's no level left.
-// hh is the height of the hole the ledge sits in. we don't paint the ledge
-// at all any more - the hole in the artwork IS the platform - so hh is how
-// the trap tint knows what shape to shade.
+// safe:true is the path. nothing on screen may shout which is which or
+// there's no level left. hh = height of the hole it sits in; we don't paint
+// the ledge at all now, so hh is how the trap tint knows what to shade.
 const CHEESE_LEDGES = [
     { x:  60, y: 540, w: 140, h: 12, hh: 75, safe: true  },   // the start
     { x: 206, y: 461, w: 120, h: 12, hh: 70, safe: true  },
@@ -109,12 +102,12 @@ const CHEESE_LEDGES = [
 
 // ===================== ARENA 3 : GRASSY FALLS ==========================
 //
-// thirty grass steps and they all give way under you. three doors, one way
-// out. the other two are the joke:
-//   top right  - the exit. you're through.
-//   bottom right - a painted door with nothing behind it. you fall.
-//   top left   - the kill switch. sends you back to the balcony, top tier
-//                ragebait, costs you everything but the rule.
+// 26 grass steps, all of which give way under you. 3 doors, 1 way out. the
+// other two are the joke:
+//   top right    - the exit, you're through
+//   bottom right - painted door, nothing behind it, you fall
+//   top left     - kill switch. back to the balcony. top tier ragebait;
+//                  costs you everything except the rule.
 const GRASS_STEPS = [
     [ 357, 95], [ 489,127], [1038,134], [ 921,173], [ 357,176], [1038,195],
     [ 480,222], [ 342,234], [ 906,234], [ 218,253], [ 105,280], [1038,290],
@@ -123,8 +116,8 @@ const GRASS_STEPS = [
     [ 211,514], [ 357,528]
 ];
 
-// the three steps with a door stood on them never fall. a door you can't
-// reach isn't a choice, it's a bug.
+// the 3 steps w/ a door on them never fall. a door you can't reach isn't a
+// choice, it's a bug.
 const GRASS_SOLID = [
     { x: 458, y: 536, w: 340, h: 20, fixed: true },   // the balcony roof
     { x: 537, y: 443, w: 250, h: 14, fixed: true },   // the ornate rail
@@ -138,8 +131,8 @@ const LEVELS = [
         id: 1, name: "Dripstone", art: "dripstone",
         blurb: "Rock falls. It rattles first. There is no floor.",
         tutorial: true,
-        safeRules: ["NORMAL"],               // the control - nothing hidden
-        spawn: { x: 628, y: 250 },           // dead centre, on the clock tower
+        safeRules: ["NORMAL"],               // control run, nothing hidden
+        spawn: { x: 628, y: 250 },           // dead centre, on the tower
         exit:  { x: 1028, y: 256, w: 46, h: 62 },
         platforms: CAVE_PLATFORMS,
         stalactites: CAVE_STALS,
@@ -155,7 +148,7 @@ const LEVELS = [
         spawn: { x: 120, y: 470 },
         exit:  { x: 1140, y: 118, w: 70, h: 100 },
         platforms: CHEESE_LEDGES,
-        cheesed: true,                       // wrong ledge = straight back to the start
+        cheesed: true,                       // wrong ledge = back to the start
         killY: 585, parMoves: 19,
         hasCeiling: false, hasProjectile: false
     },
@@ -181,10 +174,9 @@ const LEVELS = [
         safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","MOMENTUM",
                     "SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"],
         spawn: { x: 628, y: 250 },
-        // the trigger runs a bit past the painted gate on purpose: with
-        // gravity flipped you're stood on the roof and you drop into it from
-        // above, and twelve pixels is the difference between that being a
-        // move and being a coin toss.
+        // trigger runs a bit past the painted gate deliberately. gravity
+        // flipped, you're on the roof dropping in from above, and 12px is
+        // the difference between a move and a coin toss.
         exit:  { x: 1028, y: 256, w: 46, h: 62 },
         platforms: CAVE_PLATFORMS,
         stalactites: CAVE_STALS,
