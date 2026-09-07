@@ -71,13 +71,14 @@ function stepVanishers(vs, playerOnTop) {
 function makeMovers(level) {
     return (level.movers || []).map(function (m) {
         return { x:m.x, y:m.y, w:m.w, h:m.h, vx:m.vx || 0, vy:m.vy || 0,
-                 minX:m.minX, maxX:m.maxX, minY:m.minY, maxY:m.maxY, dx:0, dy:0 };
+                 minX:m.minX, maxX:m.maxX, minY:m.minY, maxY:m.maxY,
+                 trigger:m.trigger || false, armed:false, dx:0, dy:0 };
     });
 }
 
 function stepMovers(ms, frozen) {
     for (const m of ms) {
-        if (frozen) { m.dx = 0; m.dy = 0; continue; }
+        if (frozen || (m.trigger && !m.armed)) { m.dx = 0; m.dy = 0; continue; }
         m.dx = m.vx; m.dy = m.vy;
         m.x += m.vx; m.y += m.vy;
         if (m.minX !== undefined && (m.x < m.minX || m.x + m.w > m.maxX)) { m.vx = -m.vx; m.x += m.vx; }
@@ -106,4 +107,52 @@ function shiftLedges(level) {
 
 function resetLedges(level) {
     for (const p of level.platforms) if (p.homeX !== undefined) p.x = p.homeX;
+}
+
+
+// stalactites. four sizes, dripping from the ceiling on their own timers.
+// a hit doesn't kill - it shoves you. that's worse, because near a ledge
+// the shove is what kills you, and the shove is your own fault for being
+// stood there.
+const STAL_SIZES = [
+    { w: 10, h: 16, knock: 4,  fall: 0.30 },
+    { w: 14, h: 24, knock: 6,  fall: 0.34 },
+    { w: 18, h: 34, knock: 9,  fall: 0.40 },
+    { w: 24, h: 46, knock: 13, fall: 0.46 }
+];
+
+function makeStalactites(level) {
+    return (level.stalactites || []).map(function (s, i) {
+        const kind = STAL_SIZES[s.size || 0];
+        return {
+            x: s.x, ceilY: s.y, y: s.y, w: kind.w, h: kind.h,
+            knock: kind.knock, fall: kind.fall, size: s.size || 0,
+            period: s.period || 190, offset: s.offset !== undefined ? s.offset : i * 47,
+            state: "hanging", vy: 0, shake: 0, gone: 0
+        };
+    });
+}
+
+// hanging -> shaking (a warning you can act on) -> falling -> gone -> back
+function stepStalactites(list, tick, floorY) {
+    for (const s of list) {
+        const phase = (tick + s.offset) % s.period;
+        if (s.state === "hanging") {
+            s.shake = phase > s.period - 40 ? 1 : 0;      // rattles before it drops
+            if (phase === 0) { s.state = "falling"; s.vy = 0; s.shake = 0; }
+        } else if (s.state === "falling") {
+            s.vy += s.fall;
+            s.y += s.vy;
+            if (s.y > floorY) { s.state = "gone"; s.gone = 45; }
+        } else {
+            if (--s.gone <= 0) { s.state = "hanging"; s.y = s.ceilY; s.vy = 0; }
+        }
+    }
+}
+
+// a platform that sits still until you step on it, then runs. the level
+// designer's idea and a good one: you can look at it all day, it only
+// betrays you once you commit.
+function armTrigger(m, standing) {
+    if (m.trigger && !m.armed && standing) m.armed = true;
 }

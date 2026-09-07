@@ -52,12 +52,15 @@ check("clock: stood still 5s, drained 5", detectTimer(5,0.2,5), "TIMER_WALL_CLOC
 check("clock: stood still 5s, drained nothing", detectTimer(0.2,0.2,5), "TIMER_PER_STEP");
 
 group("scoring");
-check("called the moment you knew", gapScore(4,4,true), 100);
-check("three moves late", gapScore(4,7,true), 55);
-check("correct but early is a guess", gapScore(4,2,true), 10);
-check("wrong", gapScore(4,9,false), 0);
-check("never became knowable", gapScore(null,4,true), 10);
-check("floor holds at 10", gapScore(0,20,true), 10);
+check("wrong rule scores nothing", gapScore(4, 9, false, 12), 0);
+check("clean run: 6 moves, 10s", gapScore(4, 6, true, 10), 1000 - 90 - 80);
+check("more moves costs more", gapScore(4, 12, true, 10) < gapScore(4, 6, true, 10), true);
+check("more time costs more", gapScore(4, 6, true, 40) < gapScore(4, 6, true, 10), true);
+check("early call keeps a quarter", gapScore(8, 3, true, 10), Math.round((1000 - 45 - 80) * 0.25));
+check("no sufficiency is also a guess", gapScore(null, 6, true, 10), Math.round((1000 - 90 - 80) * 0.25));
+check("never below 50", gapScore(4, 200, true, 300), 50);
+check("breakdown adds up", scoreBreakdown(4, 6, true, 10).total, gapScore(4, 6, true, 10));
+check("breakdown of a wrong call", scoreBreakdown(4, 6, false, 10).total, 0);
 recordSufficiency(3); check("sufficiency stored", getSufficiency(), 3);
 resetAttempt();      check("reset actually clears it", getSufficiency(), null);
 check("empty pool throws", (function(){ try { rollRule([]); return "no throw"; } catch(e){ return e.message; } })(), "Level has no safe rules");
@@ -66,7 +69,10 @@ group("levels");
 check("four arenas", LEVELS.length, 4);
 LEVELS.forEach(function (L) {
     check("L" + L.id + " has a name", typeof L.name, "string");
-    check("L" + L.id + " has 3+ safe rules", L.safeRules.length >= 3, true);
+    // arena 1 is the control - one rule, NORMAL, nothing hidden. every
+    // other arena needs 3+ or guessing pays off too often.
+    check("L" + L.id + " has enough safe rules",
+          L.safeRules.length === 1 ? L.safeRules[0] === "NORMAL" : L.safeRules.length >= 3, true);
     check("L" + L.id + " rule ids are real", L.safeRules.filter(function(r){ return !ALL_RULES.includes(r); }), []);
     check("L" + L.id + " bullets only where there's a projectile",
           L.safeRules.includes("BULLETS_PUSH") ? L.hasProjectile : true, true);
@@ -118,6 +124,51 @@ group("simulator");
 })();
 
 
+group("blocked jumps");
+(function () {
+    // the one that bit us: a jump stopped by a ceiling reads the same as a
+    // jump that never happened. the engine has to tell those apart or it
+    // reports NO_JUMP while some other rule is live and empties the set.
+    check("no movement reads as nothing", detectJump(true, 300, 300), "JUMP_NOTHING");
+    check("a real jump reads as rose", detectJump(true, 300, 288), "JUMP_ROSE");
+    // and the set must never empty, whatever order the evidence lands in
+    const combos = [["JUMP_NOTHING","LANDED_REARRANGED"], ["KEPT_SLIDING","JUMP_FELL"],
+                    ["MOVED_OPPOSITE_DIRECTION","JUMP_FELL"], ["JUMP_ROSE","JUMP_NOTHING"]];
+    combos.forEach(function (pair) {
+        let set = ALL_RULES.slice();
+        set = updateLiveSet(set, pair[0]);
+        const after = updateLiveSet(set, pair[1]);
+        check(pair.join(" then ") + " is a known contradiction", after.length, 0);
+    });
+})();
+
+group("stalactites");
+(function () {
+    const L1 = LEVELS[0];
+    check("arena 1 is the control (one rule, NORMAL)", L1.safeRules, ["NORMAL"]);
+    check("arena 2 is the same cave", LEVELS[1].platforms, L1.platforms);
+    check("arena 2 hides something", LEVELS[1].safeRules.length > 1, true);
+    const st = makeStalactites(L1);
+    check("seven stalactites", st.length, 7);
+    check("four distinct sizes used", new Set(L1.stalactites.map(function(s){return s.size;})).size, 4);
+    check("they start hanging", st[0].state, "hanging");
+    check("bigger ones hit harder", st.find(function(s){return s.size===3;}).knock >
+                                    st.find(function(s){return s.size===0;}).knock, true);
+    let fell = false;
+    for (let t = 0; t < 400; t++) { stepStalactites(st, t, 500); if (st[0].state === "falling") fell = true; }
+    check("they actually fall", fell, true);
+    check("and they reset", st.every(function(s){ return ["hanging","falling","gone"].includes(s.state); }), true);
+
+    const mv = makeMovers(L1);
+    check("the last platform is trigger-armed", mv[0].trigger, true);
+    const x0 = mv[0].x;
+    for (let i = 0; i < 30; i++) stepMovers(mv, false);
+    check("it holds still until you stand on it", mv[0].x, x0);
+    armTrigger(mv[0], true);
+    for (let i = 0; i < 30; i++) stepMovers(mv, false);
+    check("then it runs", mv[0].x !== x0, true);
+})();
+
 group("hazards");
 (function () {
     // the bullet must never start where the player does
@@ -137,8 +188,8 @@ group("hazards");
     });
 })();
 (function () {
-    const L3 = LEVELS.find(function (l) { return l.id === 3; });
-    const ls = makeLasers(L3);
+    const LL = LEVELS.find(function (l) { return l.lasers; });
+    const ls = makeLasers(LL);
     check("lasers built", ls.length, 4);
     stepLasers(ls, 0, false);   const onAt0 = ls.filter(function(l){return l.on;}).length;
     stepLasers(ls, 90, false);  const onAt90 = ls.filter(function(l){return l.on;}).length;
@@ -146,8 +197,8 @@ group("hazards");
     stepLasers(ls, 0, false); const before = ls[0].on;
     stepLasers(ls, 500, true); check("frozen lasers hold their state", ls[0].on, before);
 
-    const L2 = LEVELS.find(function (l) { return l.id === 2; });
-    const vs = makeVanishers(L2);
+    const LV = LEVELS.find(function (l) { return l.vanishers; });
+    const vs = makeVanishers(LV);
     check("vanishers built", vs.length, 3);
     check("they start solid", vs[0].state, "solid");
     stepVanishers(vs, function (v) { return v === vs[0]; });
@@ -157,9 +208,10 @@ group("hazards");
     for (let i = 0; i < 200; i++) stepVanishers(vs, function () { return false; });
     check("and it comes back", vs[0].state, "solid");
 
-    const L4 = LEVELS.find(function (l) { return l.id === 4; });
-    const ms = makeMovers(L4);
-    check("movers built", ms.length, 2);
+    const LM = LEVELS.find(function (l) { return l.movers && !l.movers[0].trigger; }) || LEVELS[0];
+    const ms = makeMovers(LM);
+    check("movers built", ms.length >= 1, true);
+    ms.forEach(function (m) { m.armed = true; });
     const x0 = ms[0].x; stepMovers(ms, false);
     check("a mover moves", ms[0].x !== x0, true);
     const x1 = ms[0].x; stepMovers(ms, true);

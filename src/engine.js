@@ -20,10 +20,11 @@ let moves = 0;                 // deliberate actions. this is the currency.
 let liveSet = [];
 let called = false, wasRight = false, score = 0, callMove = 0;
 let framesSinceRelease = 0, wasMoving = false;
-let bullets = [], lasers = [], vanishers = [], movers = [], ghosts = [];
+let bullets = [], lasers = [], vanishers = [], movers = [], ghosts = [], stals = [];
 let elapsed = 0, walked = 0, realSecs = 0;
 let deaths = 0, deathCause = "";
-let movePulse = 0, tick = 0;
+let movePulse = 0, tick = 0, shove = 0;
+let tutorialStep = -1;
 
 // something worth reporting happened. narrow the list, and note the exact
 // moment it became knowable - that's what the score is built on.
@@ -61,6 +62,8 @@ function newAttempt() {
     vanishers = makeVanishers(level);
     movers = makeMovers(level);
     ghosts = makeGhosts(level);
+    stals = makeStalactites(level);
+    tutorialStep = level.tutorial ? 0 : -1;
     moves = 0; called = false; score = 0; deaths = 0;
     elapsed = 0; walked = 0; realSecs = 0;
     framesSinceRelease = 0; wasMoving = false;
@@ -75,6 +78,14 @@ function nextLevel() {
     newAttempt();
 }
 
+// arena 1 has nothing hidden in it - it's the control. so finishing it
+// doesn't ask you to name anything, it just walks you into the same cave
+// with something changed. you can only notice a difference if you were
+// shown the original first.
+function isControlLevel() {
+    return level.safeRules.length === 1 && level.safeRules[0] === "NORMAL";
+}
+
 // only these 3 count as a move. pressing D or shift isn't an action.
 const GAME_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp"];
 
@@ -82,9 +93,11 @@ const keys = {};
 document.addEventListener("keydown", function (e) {
     if (screen === "TITLE") { if (e.key === "Enter" || e.key === " ") newAttempt(); return; }
     if (screen === "DEAD")  { if (e.key === "Enter" || e.key === " " || e.key === "r" || e.key === "R") screen = "PLAY"; return; }
+    if (tutorialStep >= 0 && screen === "PLAY") { nextTutorial(); return; }
     if (e.key === "n" || e.key === "N") { newAttempt(); return; }
     if (e.key === "r" || e.key === "R") { respawn(); return; }
     if (e.key === "l" || e.key === "L") { nextLevel(); return; }
+    if (e.key === "f" || e.key === "F") { toggleFullscreen(); return; }
     if (e.key === "c" || e.key === "C") { if (!called) togglePanel(); return; }
     if (e.key === "Escape") { closePanel(); return; }
     if (panelOpen()) return;
@@ -95,6 +108,7 @@ document.addEventListener("keyup", function (e) { keys[e.key] = false; });
 canvas.addEventListener("mousedown", function () {
     if (screen === "TITLE") newAttempt();
     else if (screen === "DEAD") screen = "PLAY";
+    else if (tutorialStep >= 0) nextTutorial();
 });
 
 // stood on top of this thing right now?
@@ -102,6 +116,14 @@ function ridingMover(m) {
     return player.onGround &&
            player.x + player.w > m.x && player.x < m.x + m.w &&
            Math.abs((player.y + player.h) - m.y) < 4;
+}
+
+// the frame goes fullscreen, not the canvas - the CSS letterboxes the
+// canvas inside it so a 21:9 monitor doesn't stretch the game.
+function toggleFullscreen() {
+    const frame = canvas.parentElement;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (frame.requestFullscreen) frame.requestFullscreen();
 }
 
 function overlaps(a, b) {
@@ -114,6 +136,7 @@ function solids() {
     const out = level.platforms.slice();
     for (const v of vanishers) if (v.state !== "gone") out.push(v);
     for (const m of movers) out.push(m);
+    for (const s of stals) if (s.state === "hanging") out.push({x:s.x, y:s.ceilY-2, w:s.w, h:2});
     for (const g of ghosts) out.push(g);
     return out;
 }
@@ -122,6 +145,7 @@ function solids() {
 function update() {
     tick++;
     if (movePulse > 0) movePulse--;
+    if (shove > 0) shove--;
     if (screen !== "PLAY" || called || panelOpen()) return;
 
     const frozen = false;
@@ -176,8 +200,9 @@ function update() {
     // up and down
     const wasOnGround = player.onGround;
     let jumped = false;
+    let pushed = false;
     if ((keys["ArrowUp"] || keys["w"] || keys[" "]) && player.onGround) {
-        if (canJump()) { player.vy = -JUMP * g; player.onGround = false; }
+        if (canJump()) { player.vy = -JUMP * g; player.onGround = false; pushed = true; }
         jumped = true;
     }
 
@@ -192,11 +217,20 @@ function update() {
         player.y = player.vy > 0 ? p.y - player.h : p.y + p.h;
         player.vy = 0;
         player.onGround = true;
+        armTrigger(p, true);                       // it only runs once you commit
         if (p.dx) player.x += p.dx;                // ride the moving platform
         if (p.dy) player.y += p.dy;
     }
 
-    if (jumped && wasOnGround) logEvent(detectJump(true, yBefore, player.y));
+    // a jump that got stopped dead by a ceiling looks identical to a jump
+    // that never happened, and reporting it as JUMP_NOTHING names NO_JUMP -
+    // which contradicts whatever the real rule was. so: if we applied the
+    // impulse and they still didn't move, they were blocked, and blocked
+    // evidence is no evidence.
+    if (jumped && wasOnGround) {
+        const reading = detectJump(true, yBefore, player.y);
+        if (!(pushed && reading === "JUMP_NOTHING")) logEvent(reading);
+    }
 
     if (player.onGround && wasAir && Math.abs(player.x - xBefore) > 0.5) {
         const shifted = platformsShift();
@@ -212,7 +246,37 @@ function update() {
         break;
     }
 
+    // stalactites. a hit never kills outright - it throws you. near a ledge
+    // that IS the kill, and it's your own fault for standing there.
+    const floorBottom = canvas.height + 60;
+    stepStalactites(stals, tick, floorBottom);
+    for (const s of stals) {
+        if (s.state !== "falling" || !overlaps(player, s)) continue;
+        const away = (player.x + player.w/2) < (s.x + s.w/2) ? -1 : 1;
+        player.vx = away * s.knock;
+        player.vy = -3;
+        s.state = "gone"; s.gone = 45;
+        shove = 10;
+    }
+
     // lasers just kill. no rule touches them, so they're never evidence.
+    for (const s of stals) {
+        if (s.state === "gone") continue;
+        const jx = s.shake ? (Math.random() * 2 - 1) * 1.8 : 0;
+        ctx.fillStyle = s.shake ? "#c98a6a" : "#8d6b57";
+        ctx.beginPath();
+        ctx.moveTo(s.x + jx, s.y);
+        ctx.lineTo(s.x + s.w + jx, s.y);
+        ctx.lineTo(s.x + s.w / 2 + jx, s.y + s.h);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,.18)";
+        ctx.beginPath();
+        ctx.moveTo(s.x + 2 + jx, s.y);
+        ctx.lineTo(s.x + s.w * 0.45 + jx, s.y);
+        ctx.lineTo(s.x + s.w * 0.5 + jx, s.y + s.h * 0.7);
+        ctx.closePath(); ctx.fill();
+    }
+
     for (const l of lasers) {
         if (l.on && overlaps(player, l)) { respawn("a laser"); return; }
     }
@@ -224,7 +288,10 @@ function update() {
     if (realSecs > 2.5) logEvent(detectTimer(elapsed, walked / 240, realSecs));
 
     if (player.y > canvas.height || player.y + player.h < 0) respawn("the void");
-    if (overlaps(player, level.exit)) screen = "WON";
+    if (overlaps(player, level.exit)) {
+        if (isControlLevel()) { levelIndex++; newAttempt(); }   // straight on
+        else screen = "WON";
+    }
 }
 
 // ui.js calls this when they pick a rule off the list
@@ -232,13 +299,15 @@ function submitCall(ruleId) {
     called = true;
     callMove = moves;
     wasRight = (ruleId === activeRule);
-    score = gapScore(getSufficiency(), callMove, wasRight);
+    const secs = Math.round(realSecs * 10) / 10;
+    score = gapScore(getSufficiency(), callMove, wasRight, secs);
     recordRun({ levelId: level.id, rule: activeRule, guess: ruleId, correct: wasRight,
                 moves: callMove, sufficiency: getSufficiency(), score: score,
-                seconds: Math.round(realSecs * 10) / 10, deaths: deaths });
+                seconds: secs, deaths: deaths });
     screen = "REVEAL";
     showReveal(ruleId, activeRule, wasRight, score, getSufficiency(), callMove,
-               bestFor(activeRule), Math.round(realSecs * 10) / 10);
+               bestFor(activeRule), secs,
+               scoreBreakdown(getSufficiency(), callMove, wasRight, secs));
 }
 
 // six washes that mean nothing, on purpose. one per attempt, laid over
@@ -288,8 +357,14 @@ function draw() {
     ctx.fillStyle = attemptWash; ctx.fillRect(0, 0, w, h);
     ctx.restore();
 
+    if (shove > 0) {
+        ctx.fillStyle = "rgba(255,170,90," + (shove / 40).toFixed(3) + ")";
+        ctx.fillRect(0, 0, w, h);
+    }
+
     paintScanlines(ctx, w, h);
     drawHud(w);
+    if (tutorialStep >= 0 && screen === "PLAY") drawTutorial(w, h);
 
     if (screen === "DEAD") drawDeath(w, h);
     if (screen === "WON" && !called) drawWin(w, h);
@@ -315,6 +390,23 @@ function drawHazards() {
         ctx.fillStyle = "#9fd8ff"; rrect(g.x, g.y, g.w, g.h, 3);
         ctx.globalAlpha = 1;
     }
+    for (const s of stals) {
+        if (s.state === "gone") continue;
+        const jx = s.shake ? (Math.random() * 2 - 1) * 1.8 : 0;
+        ctx.fillStyle = s.shake ? "#c98a6a" : "#8d6b57";
+        ctx.beginPath();
+        ctx.moveTo(s.x + jx, s.y);
+        ctx.lineTo(s.x + s.w + jx, s.y);
+        ctx.lineTo(s.x + s.w / 2 + jx, s.y + s.h);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,.18)";
+        ctx.beginPath();
+        ctx.moveTo(s.x + 2 + jx, s.y);
+        ctx.lineTo(s.x + s.w * 0.45 + jx, s.y);
+        ctx.lineTo(s.x + s.w * 0.5 + jx, s.y + s.h * 0.7);
+        ctx.closePath(); ctx.fill();
+    }
+
     for (const l of lasers) {
         if (l.on) {
             ctx.fillStyle = "rgba(255,60,60,.22)"; ctx.fillRect(l.x - 5, l.y, l.w + 10, l.h);
@@ -387,7 +479,7 @@ function drawHud(w) {
     if (deaths > 0) { ctx.fillStyle = "#e8705a"; ctx.fillText("deaths " + deaths, 330, 27); }
 
     ctx.fillStyle = "#6f7889";
-    ctx.fillText("← → ↑ move    C call    R retry    N new rule    L next arena", 420, 27);
+    ctx.fillText("← → ↑ move   C call   R retry   N new rule   L arena   F fullscreen", 400, 27);
 }
 
 function drawWin(w, h) {
@@ -457,6 +549,70 @@ function drawTitle(w, h) {
     ctx.fillStyle = "#5c6675"; ctx.font = "13px system-ui, sans-serif";
     ctx.fillText("click, or press ENTER", w/2, by + 82);
     ctx.textAlign = "left";
+}
+
+// ---------- tutorial ----------
+//
+// five cards, each pointing at the one thing it's talking about. only ever
+// runs on the first cave, and any key or click moves it on. people who
+// already know the game skip it in five taps; people who don't get told
+// what the clock and the call panel are for before they need them.
+const TUTORIAL = [
+    { text: "Arrow keys move. Up jumps.",                    at: [110, 340], from: [230, 250] },
+    { text: "Rock falls. It rattles first - that's your warning.", at: [445, 200], from: [500, 300] },
+    { text: "A hit doesn't kill you. It throws you. Near a ledge, that's the same thing.", at: [300, 380], from: [330, 290] },
+    { text: "This clock counts up. Your time is part of your score.", at: [26, 22],  from: [150, 110] },
+    { text: "Reach the gate, then press C and name what was different about the physics.", at: [715, 230], from: [520, 150] }
+];
+
+function nextTutorial() {
+    if (tutorialStep < 0) return false;
+    tutorialStep++;
+    if (tutorialStep >= TUTORIAL.length) tutorialStep = -1;
+    return true;
+}
+
+function drawTutorial(w, h) {
+    const step = TUTORIAL[tutorialStep];
+    if (!step) return;
+    const bw = 260, bh = 74;
+    let bx = Math.max(12, Math.min(w - bw - 12, step.from[0] - bw / 2));
+    let by = Math.max(52, Math.min(h - bh - 12, step.from[1]));
+
+    ctx.strokeStyle = "#f5c542"; ctx.lineWidth = 2;      // pointer line
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(bx + bw / 2, by + bh / 2);
+    ctx.lineTo(step.at[0], step.at[1]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#f5c542";                           // ring on the thing itself
+    ctx.beginPath(); ctx.arc(step.at[0], step.at[1], 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#0f1116";
+    ctx.beginPath(); ctx.arc(step.at[0], step.at[1], 3.5, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = "rgba(14,17,22,0.96)"; rrect(bx, by, bw, bh, 8);
+    ctx.strokeStyle = "#f5c542"; ctx.lineWidth = 1.5; ctx.strokeRect(bx, by, bw, bh);
+
+    ctx.fillStyle = "#f5c542"; ctx.font = "bold 10px system-ui, sans-serif";
+    ctx.fillText((tutorialStep + 1) + " / " + TUTORIAL.length, bx + 12, by + 18);
+    ctx.fillStyle = "#e8eaf0"; ctx.font = "13px system-ui, sans-serif";
+    wrapText(step.text, bx + 12, by + 36, bw - 24, 16);
+    ctx.fillStyle = "#6f7889"; ctx.font = "10px system-ui, sans-serif";
+    ctx.fillText("any key to continue", bx + 12, by + bh - 8);
+}
+
+// canvas has no word wrap, so here's one. splits on spaces and measures.
+function wrapText(text, x, y, maxW, lh) {
+    const words = text.split(" ");
+    let line = "";
+    for (const word of words) {
+        const test = line ? line + " " + word : word;
+        if (ctx.measureText(test).width > maxW && line) {
+            ctx.fillText(line, x, y); y += lh; line = word;
+        } else line = test;
+    }
+    ctx.fillText(line, x, y);
 }
 
 function loop() { update(); draw(); requestAnimationFrame(loop); }

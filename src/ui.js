@@ -27,33 +27,26 @@ function closePanel() { $panel.hidden = true; picked = null; }
 function openPanel()  { $panel.hidden = false; picked = null; renderPanel(liveSet); }
 function togglePanel(){ $panel.hidden ? openPanel() : closePanel(); }
 
-// redraw the 8 rows. dimmed AND struck through, never colour on its own -
-// about 1 in 12 blokes can't separate those hues.
-let showHints = false;   // off by default. player does the thinking.
-
-function toggleHints() { showHints = !showHints; renderPanel(liveSet); }
-
-// every row stays pickable, always. deliberate - if the game crossed off
-// the wrong answers you literally couldn't be wrong, and a score you can't
-// lose is worth nothing. hints (H) only ever mark what your OWN moves have
-// already ruled out.
+// every row stays pickable, always, and nothing is ever crossed off for
+// you. if the game ruled out the wrong answers you literally couldn't be
+// wrong, and a score you can't lose is worth nothing.
+//
+// only list what THIS arena can roll though. asking someone to rule out a
+// bullet rule on a level with no bullets isn't a puzzle, it's a trap.
 function renderPanel(live) {
     if (!$rows) return;
-    $count.textContent = showHints ? live.length : RULES.length;
-    $total.textContent = RULES.length;
-    document.getElementById("hintline").textContent =
-        showHints ? "showing what your moves rule out — H to hide"
-                  : "press H if you want a hand";
+    const pool = (typeof level !== "undefined" && level.safeRules)
+        ? RULES.filter(function (r) { return level.safeRules.includes(r.id); })
+        : RULES;
+    $count.textContent = pool.length;
+    $total.textContent = pool.length;
     $rows.innerHTML = "";
-    RULES.forEach(function (rule, i) {
-        const alive = live.includes(rule.id);
-        const faded = showHints && !alive;
+    pool.forEach(function (rule, i) {
         const row = document.createElement("li");
-        row.className = "row live" + (faded ? " hinted" : "") + (picked === rule.id ? " picked" : "");
+        row.className = "row live" + (picked === rule.id ? " picked" : "");
         row.innerHTML = '<span class="key">' + (i+1) + '</span>' +
                         '<span class="chip" style="background:' + rule.colour + '"></span>' +
-                        '<span class="name">' + rule.label + '</span>' +
-                        (faded ? '<span class="tag">your moves rule this out</span>' : '');
+                        '<span class="name">' + rule.label + '</span>';
         row.onclick = function () { pick(rule.id); };
         $rows.appendChild(row);
     });
@@ -80,12 +73,11 @@ document.addEventListener("keydown", function (e) {
         : RULES;
     const n = parseInt(e.key, 10);
     if (n >= 1 && n <= pool.length) pick(pool[n-1].id);
-    if (e.key === "h" || e.key === "H") toggleHints();
     if (e.key === "Enter") commit();
 });
 
 // the payoff. first time they see the rule's own colour.
-function showReveal(guess, truth, right, score, sufficiency, callMove, best, secs) {
+function showReveal(guess, truth, right, score, sufficiency, callMove, best, secs, breakdown) {
     const truthRule = RULES.find(function (r) { return r.id === truth; });
     const guessRule = RULES.find(function (r) { return r.id === guess; });
 
@@ -111,10 +103,20 @@ function showReveal(guess, truth, right, score, sufficiency, callMove, best, sec
                '<div class="rulename" style="background:' + truthRule.colour + '">' + truthRule.label + '</div>';
     }
 
+    // show the working. a total on its own reads as arbitrary; the same
+    // total with "-90 for 6 moves" under it teaches you how to do better.
+    let sums = "";
+    if (breakdown) {
+        sums = '<div class="sums">' + breakdown.lines.map(function (l) {
+            return '<div><span>' + l[0] + '</span><b>' + l[1] + '</b></div>';
+        }).join("") + '</div>';
+    }
+
     $reveal.innerHTML =
         '<div class="card" style="border-color:' + (right ? truthRule.colour : "#e8705a") + '">' +
         body +
         '<div class="score">' + score + '</div><div class="slabel">points</div>' +
+        sums +
         '<p class="msg">' + msg + '</p>' +
         '<div class="stats">' +
           '<span><b>' + callMove + '</b> moves</span>' +
