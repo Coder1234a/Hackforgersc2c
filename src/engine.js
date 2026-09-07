@@ -97,7 +97,7 @@ document.addEventListener("keydown", function (e) {
     if (e.key === "n" || e.key === "N") { newAttempt(); return; }
     if (e.key === "r" || e.key === "R") { respawn(); return; }
     if (e.key === "l" || e.key === "L") { nextLevel(); return; }
-    if (e.key === "f" || e.key === "F") { toggleFullscreen(); return; }
+    if (e.key === "f" || e.key === "F") { toggleFullscreen(); return; }   // true browser fullscreen, on top of the fill
     if (e.key === "c" || e.key === "C") { if (!called) togglePanel(); return; }
     if (e.key === "Escape") { closePanel(); return; }
     if (panelOpen()) return;
@@ -261,20 +261,7 @@ function update() {
 
     // lasers just kill. no rule touches them, so they're never evidence.
     for (const s of stals) {
-        if (s.state === "gone") continue;
-        const jx = s.shake ? (Math.random() * 2 - 1) * 1.8 : 0;
-        ctx.fillStyle = s.shake ? "#c98a6a" : "#8d6b57";
-        ctx.beginPath();
-        ctx.moveTo(s.x + jx, s.y);
-        ctx.lineTo(s.x + s.w + jx, s.y);
-        ctx.lineTo(s.x + s.w / 2 + jx, s.y + s.h);
-        ctx.closePath(); ctx.fill();
-        ctx.fillStyle = "rgba(255,255,255,.18)";
-        ctx.beginPath();
-        ctx.moveTo(s.x + 2 + jx, s.y);
-        ctx.lineTo(s.x + s.w * 0.45 + jx, s.y);
-        ctx.lineTo(s.x + s.w * 0.5 + jx, s.y + s.h * 0.7);
-        ctx.closePath(); ctx.fill();
+        if (s.state !== "gone") paintStalactite(ctx, s, s.shake);
     }
 
     for (const l of lasers) {
@@ -334,17 +321,24 @@ function draw() {
     const w = canvas.width, h = canvas.height;
     if (screen === "TITLE") { drawTitle(w, h); return; }
 
-    const t = themeOf(level);
     const geo = readArena(level);
-
     setTick(tick);
-    paintBackdrop(ctx, w, h, geo.horizon, t);
-    paintTerrain(ctx, geo, w, h, t);
-    paintWorldEdge(ctx, geo, w, h);
 
-    const pipeMid = level.spawn.x + player.w / 2 - 24;
-    paintPipe(ctx, pipeMid, surfaceUnder(level, pipeMid, level.spawn.y), t);
-    paintExit(ctx, level.exit, screen === "WON", t);
+    paintBackdrop(ctx, w, h, geo.horizon);
+    paintTerrain(ctx, geo, w, h, level);
+
+    // the clock tower sits on the floor, dead centre. it's scenery, you
+    // can't stand on it - the mockup's centrepiece and a nice nod to the
+    // fact this is a game about time.
+    const floorY = level.platforms.reduce(function (a, b) { return b.y > a.y ? b : a; }).y;
+    paintTower(ctx, w / 2, floorY + 4);
+
+    for (const p of level.platforms) {
+        if (p.h > 20) paintCaveSlab(ctx, p);       // roof / floor: solid rock
+        else paintPlatform(ctx, p);                // everything else: a shelf
+    }
+    paintExit(ctx, level.exit, screen === "WON");
+    paintWorldEdge(ctx, geo, w, h);
 
     drawHazards();
     paintPlayer(ctx, player, surfaceUnder(level, player.x + player.w / 2, player.y));
@@ -375,13 +369,11 @@ function drawHazards() {
         if (v.state === "gone") continue;
         const jitter = v.state === "shaking" ? (Math.random() * 2 - 1) * 2 : 0;
         ctx.globalAlpha = v.state === "shaking" ? 0.55 + Math.sin(tick * 0.6) * 0.25 : 1;
-        ctx.fillStyle = "#8a6f4a"; rrect(v.x + jitter, v.y, v.w, v.h, 3);
-        ctx.fillStyle = "#c9e75c"; rrect(v.x + jitter, v.y, v.w, 3, 1.5);
+        paintPlatform(ctx, { x: v.x + jitter, y: v.y, w: v.w, h: v.h });
         ctx.globalAlpha = 1;
     }
     for (const m of movers) {
-        ctx.fillStyle = "#4a5568"; rrect(m.x, m.y, m.w, m.h, 3);
-        ctx.fillStyle = "#c9e75c"; rrect(m.x, m.y, m.w, 3, 1.5);
+        paintPlatform(ctx, m);
     }
     for (const g of ghosts) {                       // only there once you've hit it
         if (g.seen <= 0) continue;
@@ -391,20 +383,7 @@ function drawHazards() {
         ctx.globalAlpha = 1;
     }
     for (const s of stals) {
-        if (s.state === "gone") continue;
-        const jx = s.shake ? (Math.random() * 2 - 1) * 1.8 : 0;
-        ctx.fillStyle = s.shake ? "#c98a6a" : "#8d6b57";
-        ctx.beginPath();
-        ctx.moveTo(s.x + jx, s.y);
-        ctx.lineTo(s.x + s.w + jx, s.y);
-        ctx.lineTo(s.x + s.w / 2 + jx, s.y + s.h);
-        ctx.closePath(); ctx.fill();
-        ctx.fillStyle = "rgba(255,255,255,.18)";
-        ctx.beginPath();
-        ctx.moveTo(s.x + 2 + jx, s.y);
-        ctx.lineTo(s.x + s.w * 0.45 + jx, s.y);
-        ctx.lineTo(s.x + s.w * 0.5 + jx, s.y + s.h * 0.7);
-        ctx.closePath(); ctx.fill();
+        if (s.state !== "gone") paintStalactite(ctx, s, s.shake);
     }
 
     for (const l of lasers) {
@@ -479,7 +458,7 @@ function drawHud(w) {
     if (deaths > 0) { ctx.fillStyle = "#e8705a"; ctx.fillText("deaths " + deaths, 330, 27); }
 
     ctx.fillStyle = "#6f7889";
-    ctx.fillText("← → ↑ move   C call   R retry   N new rule   L arena   F fullscreen", 400, 27);
+    ctx.fillText("← → ↑ move    C call    R retry    N new rule    L next arena", 420, 27);
 }
 
 function drawWin(w, h) {

@@ -11,28 +11,41 @@
 // the cave, the stalactites and the moving ledge with nothing else going
 // on. second run is the same rock with a rule underneath it, and that
 // contrast IS the game. you already know what this place should do.
+// you start in the middle of a wide shelf with open sky above you, then
+// climb out to either side. no safe corner to hide in while you think.
 const CAVE_PLATFORMS = [
-    { x: 0,   y: 410, w: 190, h: 20 },   // start shelf
-    { x: 240, y: 370, w: 120, h: 16 },
-    { x: 410, y: 330, w: 110, h: 16 },
-    { x: 570, y: 300, w: 90,  h: 16 },
-    { x: 0,   y: 150, w: 800, h: 22 }    // cave roof, stalactites hang here
+    { x: 250, y: 300, w: 300, h: 18 },   // centre shelf, you spawn here
+    { x:  20, y: 360, w: 170, h: 16 },
+    { x: 610, y: 360, w: 170, h: 16 },
+    { x: 120, y: 232, w: 120, h: 16 },
+    { x: 560, y: 232, w: 120, h: 16 },
+    { x:   0, y: 418, w: 800, h: 32 },   // cave floor
+    { x:   0, y:  74, w: 800, h: 22 }    // roof, stalactites hang here
 ];
 
+// eleven of them, right across the roof, so nowhere on the floor is safe
+// to just stand. sizes and periods are deliberately uneven - a tidy rhythm
+// would be learnable in one pass and this shouldn't be.
 const CAVE_STALS = [
-    { x: 140, y: 172, size: 0, period: 170, offset: 0   },
-    { x: 275, y: 172, size: 2, period: 210, offset: 60  },
-    { x: 330, y: 172, size: 1, period: 150, offset: 120 },
-    { x: 445, y: 172, size: 3, period: 240, offset: 30  },
-    { x: 495, y: 172, size: 0, period: 130, offset: 90  },
-    { x: 600, y: 172, size: 2, period: 190, offset: 150 },
-    { x: 700, y: 172, size: 1, period: 160, offset: 40  }
+    { x:  60, y: 96, size: 1, period: 170, offset:   0 },
+    { x: 130, y: 96, size: 0, period: 205, offset:  55 },
+    { x: 205, y: 96, size: 2, period: 240, offset: 110 },
+    { x: 275, y: 96, size: 0, period: 150, offset:  25 },
+    { x: 345, y: 96, size: 3, period: 265, offset:  80 },
+    { x: 400, y: 96, size: 1, period: 185, offset: 140 },
+    { x: 470, y: 96, size: 2, period: 220, offset:  35 },
+    { x: 540, y: 96, size: 0, period: 160, offset:  95 },
+    { x: 610, y: 96, size: 3, period: 250, offset:  15 },
+    { x: 680, y: 96, size: 1, period: 195, offset: 125 },
+    { x: 740, y: 96, size: 2, period: 175, offset:  70 }
 ];
 
 // the last jump. sits dead still until you stand on it, then it runs -
 // so you can study it all you like and it still betrays you once.
+// the last jump. sits dead still until you stand on it, then it runs - so
+// you can study it all you like and it still betrays you once.
 const CAVE_MOVER = [
-    { x: 690, y: 260, w: 70, h: 14, vx: 1.5, minX: 600, maxX: 780, trigger: true }
+    { x: 340, y: 180, w: 80, h: 14, vx: 1.6, minX: 250, maxX: 560, trigger: true }
 ];
 
 const LEVELS = [
@@ -41,8 +54,8 @@ const LEVELS = [
         blurb: "Rock falls. Watch what shakes before it does.",
         tutorial: true,
         safeRules: ["NORMAL"],               // first run is always plain
-        spawn: { x: 40, y: 370 },
-        exit:  { x: 700, y: 210, w: 30, h: 40 },
+        spawn: { x: 385, y: 260 },              // dead centre
+        exit:  { x: 385, y:  96, w: 30, h: 40 },   // straight up, past the rocks
         platforms: CAVE_PLATFORMS,
         stalactites: CAVE_STALS,
         movers: CAVE_MOVER,
@@ -54,8 +67,8 @@ const LEVELS = [
         blurb: "Same cave. Something is different. Which one?",
         safeRules: ["NORMAL","REVERSE_GRAVITY","INVERTED_CONTROLS","MOMENTUM",
                     "SHIFTING_PLATFORMS","MOVEMENT_COSTS_TIME"],
-        spawn: { x: 40, y: 370 },
-        exit:  { x: 700, y: 210, w: 30, h: 40 },
+        spawn: { x: 385, y: 260 },              // dead centre
+        exit:  { x: 385, y:  96, w: 30, h: 40 },   // straight up, past the rocks
         platforms: CAVE_PLATFORMS,
         stalactites: CAVE_STALS,
         movers: CAVE_MOVER,

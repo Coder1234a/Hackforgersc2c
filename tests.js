@@ -144,12 +144,22 @@ group("blocked jumps");
 
 group("stalactites");
 (function () {
+    // spawn has to sit in the middle of the screen with sky above it, and
+    // rock has to be able to reach every part of the floor.
+    const A1 = LEVELS[0];
+    check("spawn is near the middle of the canvas",
+          Math.abs(A1.spawn.x + 12 - 400) < 60, true);
+    const roof = A1.platforms.reduce(function (a, b) { return b.y < a.y ? b : a; });
+    check("stalactites hang off the roof",
+          A1.stalactites.every(function (s) { return Math.abs(s.y - (roof.y + roof.h)) < 4; }), true);
+    check("they cover the width", Math.max.apply(null, A1.stalactites.map(function(s){return s.x;})) -
+          Math.min.apply(null, A1.stalactites.map(function(s){return s.x;})) > 600, true);
     const L1 = LEVELS[0];
     check("arena 1 is the control (one rule, NORMAL)", L1.safeRules, ["NORMAL"]);
     check("arena 2 is the same cave", LEVELS[1].platforms, L1.platforms);
     check("arena 2 hides something", LEVELS[1].safeRules.length > 1, true);
     const st = makeStalactites(L1);
-    check("seven stalactites", st.length, 7);
+    check("eleven stalactites", st.length, 11);
     check("four distinct sizes used", new Set(L1.stalactites.map(function(s){return s.size;})).size, 4);
     check("they start hanging", st[0].state, "hanging");
     check("bigger ones hit harder", st.find(function(s){return s.size===3;}).knock >
