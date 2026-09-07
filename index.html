@@ -4,24 +4,43 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Misrule</title>
+<meta name="description" content="Every attempt hides a different law of physics. Work out which one.">
+
+<!-- two faces off google fonts. if they don't load, the fallback stacks in
+     game.css and engine.js take over and nothing breaks - the game still
+     runs with the wifi off, it just looks a bit plainer. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 <link rel="stylesheet" href="ui/game.css">
 </head>
 <body>
 
 <div class="stage">
   <div class="frame">
-    <canvas id="game" width="800" height="450"></canvas>
+    <canvas id="game" width="1280" height="600"></canvas>
 
     <div id="panel" hidden>
-      <h2>What's the rule?</h2>
-      <p class="sub"><b id="count">8</b> of <b id="total">8</b> still possible</p>
-      <ul id="rows"></ul>
-      <p class="foot">1&ndash;8 to pick &middot; ENTER to call it &middot; ESC to close</p>
+      <div class="panelbox">
+        <h2>What's the rule?</h2>
+        <p class="sub"><b id="count">8</b> of <b id="total">8</b> still on the table</p>
+        <ul id="rows"></ul>
+        <p class="foot"><kbd>1</kbd>&ndash;<kbd>8</kbd> to pick &middot; <kbd>Enter</kbd> to lock it in &middot; <kbd>Esc</kbd> to back out</p>
+      </div>
     </div>
 
     <div id="reveal" hidden></div>
   </div>
 </div>
+
+<!-- the pictures first: they're just data, and everything else expects
+     ARENA_ART to exist by the time it draws. -->
+<script src="src/artpack.js"></script>
+<script src="src/art-dripstone.js"></script>
+<script src="src/art-cheese.js"></script>
+<script src="src/art-grassy.js"></script>
+<script src="src/art-grassstep.js"></script>
 
 <script src="src/art.js"></script>
 <script src="src/evidence.js"></script>

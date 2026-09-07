@@ -2,5 +2,10 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
-.claude/ 
-handouts/ 
+.claude/
+handouts/
+
+# scratch from the art pipeline - staged images and files pulled out of the
+# build. safe to delete off disk whenever.
+_to_delete/
+_stage_*.webp

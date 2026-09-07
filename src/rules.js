@@ -29,9 +29,15 @@ function canJump() {
     return activeRule !== "NO_JUMP";
 }
 
-// how fast you get going. 99 is instant, momentum makes it a slog.
+// how fast you get going. 99 is instant.
+//
+// momentum used to sit at 0.16 and it made the cave unwinnable - you could
+// not build enough speed in the air to make the jump onto the small shelf,
+// so the rule was a death sentence rather than a puzzle. 0.24 still feels
+// heavy off the mark; the tell you're meant to notice is the SKID, and
+// that's friction, which hasn't moved.
 function acceleration() {
-    return activeRule === "MOMENTUM" ? 0.16 : 99;
+    return activeRule === "MOMENTUM" ? 0.24 : 99;
 }
 
 // do you stop when you let go. 0.945 gives ~55px of skid, near 3 squares,

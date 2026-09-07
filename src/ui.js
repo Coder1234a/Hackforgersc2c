@@ -27,29 +27,39 @@ function closePanel() { $panel.hidden = true; picked = null; }
 function openPanel()  { $panel.hidden = false; picked = null; renderPanel(liveSet); }
 function togglePanel(){ $panel.hidden ? openPanel() : closePanel(); }
 
-// every row stays pickable, always, and nothing is ever crossed off for
-// you. if the game ruled out the wrong answers you literally couldn't be
-// wrong, and a score you can't lose is worth nothing.
+// ALL EIGHT fundamentals are listed, every time. that's the whole rule
+// book, so a player can see the shape of the game on their first arena
+// instead of discovering rules four levels in.
 //
-// only list what THIS arena can roll though. asking someone to rule out a
-// bullet rule on a level with no bullets isn't a puzzle, it's a trap.
+// the ones this arena can't roll are greyed out and can't be picked. that
+// isn't hiding anything - it's the difference between a puzzle and a trap.
+// asking someone to rule out a bullet rule on a level with no bullets is
+// just cruelty with extra steps.
+//
+// nothing is ever crossed off for you among the LIVE ones, though. if the
+// game ruled out the wrong answers you literally couldn't be wrong, and a
+// score you can't lose is worth nothing.
 function renderPanel(live) {
     if (!$rows) return;
-    const pool = (typeof level !== "undefined" && level.safeRules)
-        ? RULES.filter(function (r) { return level.safeRules.includes(r.id); })
-        : RULES;
+    const pool = (typeof level !== "undefined" && level.safeRules) ? level.safeRules : ALL_RULES;
     $count.textContent = pool.length;
-    $total.textContent = pool.length;
+    $total.textContent = RULES.length;
     $rows.innerHTML = "";
-    pool.forEach(function (rule, i) {
+    RULES.forEach(function (rule, i) {
+        const inPlay = pool.includes(rule.id);
         const row = document.createElement("li");
-        row.className = "row live" + (picked === rule.id ? " picked" : "");
-        row.innerHTML = '<span class="key">' + (i+1) + '</span>' +
+        row.className = "row" + (inPlay ? " live" : " off") + (picked === rule.id ? " picked" : "");
+        row.innerHTML = '<span class="key">' + (i + 1) + '</span>' +
                         '<span class="chip" style="background:' + rule.colour + '"></span>' +
-                        '<span class="name">' + rule.label + '</span>';
-        row.onclick = function () { pick(rule.id); };
+                        '<span class="name">' + rule.label + '</span>' +
+                        (inPlay ? '' : '<span class="off-tag">not in this arena</span>');
+        if (inPlay) row.onclick = function () { pick(rule.id); };
         $rows.appendChild(row);
     });
+    const foot = document.querySelector("#panel .foot");
+    if (foot) foot.innerHTML =
+        '<kbd>1</kbd>&ndash;<kbd>' + RULES.length + '</kbd> to pick &middot; ' +
+        '<kbd>Enter</kbd> to lock it in &middot; <kbd>Esc</kbd> to back out';
 }
 
 function pick(id) {
@@ -68,16 +78,15 @@ function commit() {
 
 document.addEventListener("keydown", function (e) {
     if (!panelOpen()) return;
-    const pool = (typeof level !== "undefined" && level.safeRules)
-        ? RULES.filter(function (r) { return level.safeRules.includes(r.id); })
-        : RULES;
+    const pool = (typeof level !== "undefined" && level.safeRules) ? level.safeRules : ALL_RULES;
     const n = parseInt(e.key, 10);
-    if (n >= 1 && n <= pool.length) pick(pool[n-1].id);
+    // the number matches the row you can see. a greyed-out row does nothing.
+    if (n >= 1 && n <= RULES.length && pool.includes(RULES[n-1].id)) pick(RULES[n-1].id);
     if (e.key === "Enter") commit();
 });
 
 // the payoff. first time they see the rule's own colour.
-function showReveal(guess, truth, right, score, sufficiency, callMove, best, secs, breakdown) {
+function showReveal(guess, truth, right, score, sufficiency, callMove, best, secs, breakdown, par, runTotal, isLast) {
     const truthRule = RULES.find(function (r) { return r.id === truth; });
     const guessRule = RULES.find(function (r) { return r.id === guess; });
 
@@ -120,11 +129,24 @@ function showReveal(guess, truth, right, score, sufficiency, callMove, best, sec
         '<p class="msg">' + msg + '</p>' +
         '<div class="stats">' +
           '<span><b>' + callMove + '</b> moves</span>' +
+          (par ? '<span><b>' + par + '</b> par</span>' : '') +
           '<span><b>' + (secs === undefined ? "-" : secs) + 's</b> taken</span>' +
           (best !== null && best !== undefined ? '<span><b>' + best + '</b> your best</span>' : '') +
         '</div>' +
-        '<p class="hint">N for a new rule  ·  L for the next arena</p></div>';
+        (runTotal !== undefined ? '<div class="runtotal">run total <b>' + runTotal + '</b></div>' : '') +
+        '<div class="acts">' +
+          '<button class="btn ghost" id="btnAgain">Play again</button>' +
+          '<button class="btn go" id="btnNext">' + (isLast ? "See your score" : "Next arena") + '</button>' +
+        '</div>' +
+        '<p class="hint"><kbd>Enter</kbd> ' + (isLast ? "your score" : "next arena") +
+        '  ·  <kbd>Q</kbd> same arena, new rule</p></div>';
     $reveal.hidden = false;
+
+    // wired here rather than inline onclick, so the card stays plain HTML
+    const again = document.getElementById("btnAgain");
+    const next  = document.getElementById("btnNext");
+    if (again) again.onclick = function () { revealAgain(); };
+    if (next)  next.onclick  = function () { revealNext(); };
 }
 
 function hideReveal() { $reveal.hidden = true; }
